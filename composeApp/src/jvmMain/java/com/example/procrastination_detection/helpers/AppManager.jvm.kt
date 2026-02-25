@@ -1,4 +1,4 @@
-package com.example.procrastination_detection
+package com.example.procrastination_detection.helpers
 
 // In desktopMain/src/desktopMain/kotlin/AppManager.desktop.kt
 import java.io.BufferedReader
@@ -10,7 +10,7 @@ actual fun getActiveGuiApps(): List<String> {
     return when {
         os.contains("win") -> getWindowsApps()
         os.contains("mac") -> getMacApps()
-        os.contains("nix") || os.contains("nux") || os.contains("aix") || os.contains("fedora") -> getLinuxApps()
+        os.contains("nix") || os.contains("nux") || os.contains("aix") -> getLinuxApps()
         else -> emptyList()
     }
 }
@@ -206,4 +206,114 @@ private fun getKdeWaylandApps(): List<String> {
 
     // kdotool might return duplicate IDs or names depending on how Plasma groups windows
     return apps.distinct()
+}
+
+actual fun getActiveApp(): String? {
+    val os = System.getProperty("os.name").lowercase()
+
+    return when {
+        os.contains("win") -> getWindowsActiveApp()
+        os.contains("mac") -> getMacActiveApp()
+        os.contains("nix") || os.contains("nux") || os.contains("aix") -> getLinuxActiveApp()
+        else -> null
+    }
+}
+
+private fun getLinuxActiveApp(): String? {
+    val sessionType = System.getenv("XDG_SESSION_TYPE")?.lowercase() ?: ""
+    val desktop = System.getenv("XDG_CURRENT_DESKTOP")?.lowercase() ?: ""
+
+    return when {
+        sessionType == "wayland" -> {
+            when {
+                desktop.contains("hyprland") -> getHyprlandActiveApp()
+                desktop.contains("kde") -> getKdeActiveApp()
+                else -> getX11ActiveApp() // Fallback
+            }
+        }
+        else -> getX11ActiveApp()
+    }
+}
+
+// --- HYPRLAND ---
+private fun getHyprlandActiveApp(): String? {
+    return try {
+        val process = ProcessBuilder("hyprctl", "activewindow").start()
+        val reader = BufferedReader(InputStreamReader(process.inputStream))
+        var activeClass: String? = null
+
+        var line: String?
+        while (reader.readLine().also { line = it } != null) {
+            val trimmed = line!!.trim()
+            if (trimmed.startsWith("class:")) {
+                activeClass = trimmed.removePrefix("class:").trim()
+                break // We found it, no need to read the rest
+            }
+        }
+        process.waitFor()
+        activeClass?.takeIf { it.isNotEmpty() }
+    } catch (e: Exception) { null }
+}
+
+// --- KDE WAYLAND ---
+private fun getKdeActiveApp(): String? {
+    return try {
+        // First get the active window ID, then ask for its name
+        val process = ProcessBuilder("sh", "-c", "kdotool getactivewindow | xargs kdotool getwindowname").start()
+        val reader = BufferedReader(InputStreamReader(process.inputStream))
+        val activeWindow = reader.readLine()?.trim()
+        process.waitFor()
+        activeWindow?.takeIf { it.isNotEmpty() && it != "Desktop" }
+    } catch (e: Exception) { null }
+}
+
+// --- X11 (Standard Linux Fallback) ---
+private fun getX11ActiveApp(): String? {
+    return try {
+        // xdotool can get the active window and its name in one command
+        val process = ProcessBuilder("xdotool", "getactivewindow", "getwindowname").start()
+        val reader = BufferedReader(InputStreamReader(process.inputStream))
+        val activeWindow = reader.readLine()?.trim()
+        process.waitFor()
+        activeWindow?.takeIf { it.isNotEmpty() && it != "Desktop" }
+    } catch (e: Exception) { null }
+}
+
+private fun getMacActiveApp(): String? {
+    return try {
+        val script = "tell application \"System Events\" to get name of first application process whose frontmost is true"
+        val process = ProcessBuilder("osascript", "-e", script).start()
+        val reader = BufferedReader(InputStreamReader(process.inputStream))
+        val activeApp = reader.readLine()?.trim()
+        process.waitFor()
+        activeApp?.takeIf { it.isNotEmpty() }
+    } catch (e: Exception) { null }
+}
+
+private fun getWindowsActiveApp(): String? {
+    return try {
+        val script = """
+            Add-Type @"
+              using System;
+              using System.Runtime.InteropServices;
+              using System.Text;
+              public class Win32 {
+                [DllImport("user32.dll")]
+                public static extern IntPtr GetForegroundWindow();
+                [DllImport("user32.dll", CharSet = CharSet.Auto)]
+                public static extern int GetWindowText(IntPtr hWnd, StringBuilder text, int count);
+              }
+            "@;
+            ${'$'}hwnd = [Win32]::GetForegroundWindow();
+            ${'$'}sb = New-Object System.Text.StringBuilder 256;
+            [Win32]::GetWindowText(${'$'}hwnd, ${'$'}sb, ${'$'}sb.Capacity) | Out-Null;
+            ${'$'}sb.ToString()
+        """.trimIndent()
+
+        val process = ProcessBuilder("powershell", "-command", script).start()
+        val reader = BufferedReader(InputStreamReader(process.inputStream))
+        val activeApp = reader.readLine()?.trim()
+        process.waitFor()
+        activeApp?.takeIf { it.isNotEmpty() }
+    } catch (e: Exception) { null }
 }

@@ -1,11 +1,13 @@
-package com.example.procrastination_detection.models.db
+package com.example.procrastination_detection.models.db.dto
 
 import androidx.room.Entity
 import androidx.room.PrimaryKey
 
-data class MonitoredProcess(
+@Entity("monitored_processes")
+data class MonitoredProcessEntity(
+    @PrimaryKey
     val id: String,
-    val process: Process,
+    val processId: String,
     val sessionId: String,
     val consecutiveSeconds: Long,
     var totalSeconds: Long

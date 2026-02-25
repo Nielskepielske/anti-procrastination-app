@@ -7,7 +7,11 @@ plugins {
     alias(libs.plugins.composeMultiplatform)
     alias(libs.plugins.composeCompiler)
     alias(libs.plugins.composeHotReload)
+    alias(libs.plugins.ksp)
+    alias(libs.plugins.androidx.room)
+    kotlin("plugin.serialization") version "2.0.20"
 }
+
 
 kotlin {
     androidTarget {
@@ -42,6 +46,15 @@ kotlin {
             implementation(libs.compose.uiToolingPreview)
             implementation(libs.androidx.lifecycle.viewmodelCompose)
             implementation(libs.androidx.lifecycle.runtimeCompose)
+            // Room
+            implementation(libs.androidx.room.runtime)
+            implementation(libs.androidx.sqlite.bundled)
+
+            //navigation
+            // 1. The official JetBrains Compose Navigation port
+            implementation(libs.navigation.compose)
+            // 2. Kotlinx Serialization (for type-safe routing)
+            implementation(libs.kotlinx.serialization.json)
         }
         commonTest.dependencies {
             implementation(libs.kotlin.test)
@@ -53,6 +66,9 @@ kotlin {
             implementation(libs.oshi.core)
         }
     }
+}
+room {
+    schemaDirectory("$projectDir/schemas")
 }
 
 android {
@@ -86,6 +102,14 @@ dependencies {
     debugImplementation(libs.compose.uiTooling)
     // commonMain sourceSet
     implementation(libs.lifecycle.viewmodel.compose.v280)
+
+    add("kspAndroid", libs.androidx.room.compiler)
+    add("kspIosSimulatorArm64", libs.androidx.room.compiler)
+    add("kspIosArm64", libs.androidx.room.compiler)
+    //add("kspIosX64", libs.androidx.room.compiler)
+
+    // ADD THIS LINE FOR DESKTOP/JVM:
+    add("kspJvm", libs.androidx.room.compiler)
 }
 
 compose.desktop {

@@ -2,7 +2,7 @@
   "formatVersion": 1,
   "database": {
     "version": 1,
-    "identityHash": "a6fe615b2297a1e2f55aeddb06d26ed9",
+    "identityHash": "21114db1991a01d8e2a3d5b43075b787",
     "entities": [
       {
         "tableName": "sessions",
@@ -170,7 +170,18 @@
           "columnNames": [
             "id"
           ]
-        }
+        },
+        "indices": [
+          {
+            "name": "index_categories_name",
+            "unique": true,
+            "columnNames": [
+              "name"
+            ],
+            "orders": [],
+            "createSql": "CREATE UNIQUE INDEX IF NOT EXISTS `index_categories_name` ON `${TABLE_NAME}` (`name`)"
+          }
+        ]
       },
       {
         "tableName": "processes",
@@ -200,12 +211,23 @@
           "columnNames": [
             "id"
           ]
-        }
+        },
+        "indices": [
+          {
+            "name": "index_processes_name",
+            "unique": true,
+            "columnNames": [
+              "name"
+            ],
+            "orders": [],
+            "createSql": "CREATE UNIQUE INDEX IF NOT EXISTS `index_processes_name` ON `${TABLE_NAME}` (`name`)"
+          }
+        ]
       }
     ],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'a6fe615b2297a1e2f55aeddb06d26ed9')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '21114db1991a01d8e2a3d5b43075b787')"
     ]
   }
 }

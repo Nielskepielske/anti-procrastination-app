@@ -12,6 +12,11 @@ plugins {
     kotlin("plugin.serialization") version "2.0.20"
 }
 
+repositories {
+    google()
+    mavenCentral()
+}
+
 
 kotlin {
     androidTarget {
@@ -55,6 +60,12 @@ kotlin {
             implementation(libs.navigation.compose)
             // 2. Kotlinx Serialization (for type-safe routing)
             implementation(libs.kotlinx.serialization.json)
+
+            // Icons
+            implementation(libs.material.icons.extended)
+
+            // Constrainlayout
+            implementation(libs.constraintlayout.compose.multiplatform)
         }
         commonTest.dependencies {
             implementation(libs.kotlin.test)

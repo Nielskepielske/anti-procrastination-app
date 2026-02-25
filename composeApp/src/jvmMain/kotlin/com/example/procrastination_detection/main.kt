@@ -4,7 +4,6 @@ import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.application
 import com.example.procrastination_detection.database.getDatabaseBuilder
 import com.example.procrastination_detection.database.getRoomDatabase
-import com.example.procrastination_detection.pages.home.AppListScreen
 import com.example.procrastination_detection.repositories.LocalAppRepository
 
 fun main() = application {

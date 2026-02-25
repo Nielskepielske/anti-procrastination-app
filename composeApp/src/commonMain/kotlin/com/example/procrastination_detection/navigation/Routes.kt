@@ -6,5 +6,7 @@ sealed interface Screen{
     @Serializable
     data object Home : Screen
     @Serializable
-    data object Rules : Screen
+    data object RulesManager : Screen
+    @Serializable
+    data object AppLibrary : Screen
 }

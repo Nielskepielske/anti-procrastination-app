@@ -6,9 +6,12 @@ import com.example.procrastination_detection.database.SessionDao
 import com.example.procrastination_detection.interfaces.AppRepository
 import com.example.procrastination_detection.mappers.toDomain
 import com.example.procrastination_detection.mappers.toEntity
+import com.example.procrastination_detection.models.db.Category
 import com.example.procrastination_detection.models.db.MonitoredProcess
+import com.example.procrastination_detection.models.db.Process
 import com.example.procrastination_detection.models.db.Rule
 import com.example.procrastination_detection.models.db.Session
+import com.example.procrastination_detection.models.db.dto.CategoryEntity
 import com.example.procrastination_detection.models.db.dto.SessionEntity
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
@@ -28,6 +31,12 @@ class LocalAppRepository(
     // Keeps track of the current session ID to power the Flow
     private val activeSessionId = MutableStateFlow<String?>(null)
 
+    // These will be used for the more static pages
+    override val allProcesses: Flow<List<Process>> =
+        processDao.getAllProcesses().map { list -> list.map { it.toDomain() } }
+    override val allCategories: Flow<List<Category>> =
+        processDao.getAllCategories().map { list -> list.map { it.toDomain() } }
+
     // Automatically swaps to the new session's processes when activeSessionId changes
     @OptIn(ExperimentalCoroutinesApi::class)
     override val monitoredProcesses: Flow<List<MonitoredProcess>> = activeSessionId
@@ -36,6 +45,7 @@ class LocalAppRepository(
             processDao.getFullProcessesBySession(sessionId)
         }
         .map { list -> list.map { it.toDomain() } }
+
 
     @OptIn(ExperimentalUuidApi::class)
     override suspend fun getOrCreateSession(name: String, defaultRule: Rule): Session {
@@ -83,15 +93,69 @@ class LocalAppRepository(
     }
 
     override suspend fun saveMonitoredProcess(process: MonitoredProcess) {
-        // Break down the rich Domain object into flat DB Entities
-        val categoryEntity = process.process.category.toEntity()
-        val processEntity = process.process.toEntity()
-        val monitoredEntity = process.toEntity()
+        // 1. Check if the category already exists in the database by name
+        val existingCategory = processDao.getCategoryByName(process.process.category.name)
 
-        // Insert them in order from least-dependent to most-dependent
-        // to satisfy SQLite Foreign Key constraints
-        processDao.insertCategory(categoryEntity)
-        processDao.insertProcess(processEntity)
+        // 2. Figure out the true ID we should be using
+        val actualCategoryId = if (existingCategory != null) {
+            // It exists! Ignore the random UUID from the ViewModel and use the real one.
+            existingCategory.id
+        } else {
+            // It's genuinely new. Insert it and use its ID.
+            val newCategoryEntity = process.process.category.toEntity()
+            processDao.insertCategory(newCategoryEntity)
+            newCategoryEntity.id
+        }
+
+        // 3. Map the Process to an Entity, but FORCE it to use the correct Category ID
+        var originalProcessEntity = process.process.toEntity()
+        // Check for duplicate by name
+        val existingProcess = processDao.getProcessByName(originalProcessEntity.name)
+
+        existingProcess?.let {
+            originalProcessEntity = it.toDomain().toEntity()
+        }
+        val correctedProcessEntity = originalProcessEntity.copy(categoryId = actualCategoryId)
+
+        // 4. Map the MonitoredEntry
+        val monitoredEntity = process.copy(process = existingProcess?.toDomain() ?: process.process).toEntity()
+
+
+        // 5. Save them to the database
+        processDao.insertProcess(correctedProcessEntity)
         processDao.insertMonitoredEntry(monitoredEntity)
+    }
+
+    override suspend fun updateProcessCategory(
+        process: Process,
+        category: Category
+    ) {
+        // update them
+        processDao.updateProcessCategory(process.id, category.id)
+    }
+
+    @OptIn(ExperimentalUuidApi::class)
+    override suspend fun createCategory(name: String, isProductive: Boolean): Boolean {
+        // 1. Check if it already exists (case-insensitive)
+        val existingCategory = processDao.getCategoryByName(name)
+
+        if (existingCategory != null) {
+            // It exists! Return false so the UI can show an error message.
+            return false
+        }
+
+        // 2. It's safe! Generate an ID and insert it.
+        val newCategory = CategoryEntity(
+            id = Uuid.random().toString(),
+            name = name,
+            isProductive = isProductive
+        )
+        processDao.insertCategory(newCategory)
+
+        return true
+    }
+
+    override suspend fun resetConsecutiveTimeForOtherApps(sessionId: String, activeAppName: String) {
+        processDao.resetConsecutiveTimeForOtherApps(sessionId, activeAppName)
     }
 }

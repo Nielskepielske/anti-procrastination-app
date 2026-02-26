@@ -18,16 +18,16 @@ class MainActivity : ComponentActivity() {
         val dbBuilder = getDatabaseBuilder(applicationContext)
         val database = getRoomDatabase(dbBuilder)
 
-        // 2. Create the Repository
-        val localRepo = LocalAppRepository(
+        val appContainer = AppContainer(
             processDao = database.processDao(),
             sessionDao = database.sessionDao(),
-            ruleDao = database.ruleDao()
+            ruleDao = database.ruleDao(),
+            categoryDao = database.categoryDao()
         )
 
         // 3. Pass it to your shared App composable
         setContent {
-            App(repository = localRepo)
+            App(appContainer = appContainer)
         }
     }
 }
@@ -35,5 +35,5 @@ class MainActivity : ComponentActivity() {
 @Preview
 @Composable
 fun AppAndroidPreview() {
-    App()
+    //App()
 }

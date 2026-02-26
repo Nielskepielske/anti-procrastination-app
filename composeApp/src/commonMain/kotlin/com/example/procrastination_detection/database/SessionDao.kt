@@ -25,6 +25,13 @@ interface SessionDao {
     @Query("SELECT * FROM sessions WHERE name = :name LIMIT 1")
     suspend fun getSessionByName(name: String): SessionFull?
 
+    @Transaction
+    @Query("SELECT * FROM sessions WHERE id = :sessionId")
+    suspend fun getSessionById(sessionId: String): SessionFull?
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertSession(session: SessionEntity)
+
+    @Query("UPDATE sessions SET ruleId = :ruleId WHERE id = :sessionId")
+    suspend fun updateSessionRule(sessionId: String, ruleId: String)
 }

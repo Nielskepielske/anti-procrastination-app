@@ -3,6 +3,7 @@ package com.example.procrastination_detection.engine
 import com.example.procrastination_detection.helpers.ProcrastinationEvaluator
 import com.example.procrastination_detection.helpers.getActiveApp
 import com.example.procrastination_detection.interfaces.AppRepository
+import com.example.procrastination_detection.interfaces.SessionRepository
 import com.example.procrastination_detection.models.db.Category
 import com.example.procrastination_detection.models.db.MonitoredProcess
 import com.example.procrastination_detection.models.db.Process
@@ -14,7 +15,7 @@ import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
 
 class TrackingEngine(
-    private val repository: AppRepository
+    private val sessionRepository: SessionRepository
 ) {
     // 1. The Engine's lifecycle (lives as long as the TrackingEngine object does)
     private val engineScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
@@ -32,6 +33,9 @@ class TrackingEngine(
 
     private val _consecutiveSeconds = MutableStateFlow(0L)
     val consecutiveSeconds = _consecutiveSeconds.asStateFlow()
+
+    private val _currentSessionId = MutableStateFlow("")
+    val currentSessionId = _currentSessionId.asStateFlow()
 
     // 3. The Control Function
     fun toggleTracking(interval: Long, defaultRule: Rule) {
@@ -51,27 +55,29 @@ class TrackingEngine(
     private fun startMonitoringLoop(interval: Long, defaultRule: Rule) {
         monitoringJob = engineScope.launch {
             val sessionName = "Session " + Uuid.random().toString().take(4)
-            val session = repository.getOrCreateSession(sessionName, defaultRule)
+            val session = sessionRepository.getOrCreateSession(sessionName, defaultRule)
+            _currentSessionId.value = session.id
             var previousActiveApp = ""
 
             while (isActive) {
                 val currentActiveApp = getActiveApp() ?: "default"
+                val activeRule = sessionRepository.getActiveRuleForSession(session.id)
 
                 // Inside your start() loop, right after you calculate 'currentActiveApp':
                 _currentActiveApp.value = currentActiveApp ?: "None"
 
                 if(currentActiveApp != previousActiveApp){
-                    repository.resetConsecutiveTimeForOtherApps(session.id, currentActiveApp ?: "default")
+                    sessionRepository.resetConsecutiveTimeForOtherApps(session.id, currentActiveApp ?: "default")
                     previousActiveApp = currentActiveApp
                 }
 
                 // Using the evaluator we built previously (or checking the rule logic directly):
-                val currentProcess = repository.getMonitoredProcess(currentActiveApp ?: "default", session.id)
+                val currentProcess = sessionRepository.getMonitoredProcess(currentActiveApp ?: "default", session.id)
                 val isProd = currentProcess?.process?.category?.isProductive ?: true
-                _isProcrastinating.value = !isProd
+                //_isProcrastinating.value = !isProd
 
                 // 1. READ: Get the existing object from the repository
-                val existingProcess = repository.getMonitoredProcess(currentActiveApp, session.id)
+                val existingProcess = sessionRepository.getMonitoredProcess(currentActiveApp, session.id)
 
                 // 2. MODIFY (or Create): Update the time
                 val processToSave = if (existingProcess != null) {
@@ -99,9 +105,9 @@ class TrackingEngine(
                 }
 
                 // 3. WRITE: Give the whole object back to the repository
-                repository.saveMonitoredProcess(processToSave)
+                sessionRepository.saveMonitoredProcess(processToSave)
 
-                _isProcrastinating.value = ProcrastinationEvaluator.evaluateProcrastination(processToSave)
+                _isProcrastinating.value = ProcrastinationEvaluator.evaluateProcrastination(processToSave, activeRule)
                 _consecutiveSeconds.value = processToSave.consecutiveSeconds
 
                 delay(interval * 1000L)

@@ -27,17 +27,18 @@ import com.example.procrastination_detection.pages.home.AppListViewModel
 import com.example.procrastination_detection.pages.home.HomeScreen
 import com.example.procrastination_detection.pages.library.AppLibraryScreen
 import com.example.procrastination_detection.pages.library.AppLibraryViewModel
+import com.example.procrastination_detection.pages.rule.RulesManagerScreen
+import com.example.procrastination_detection.pages.rule.RulesViewModel
 import com.example.procrastination_detection.ui.theme.AppTheme
 
 
 @Composable
-fun App(repository: AppRepository) {
+fun App(appContainer: AppContainer) {
   val navController = rememberNavController()
   // Observe the current route to highlight the correct tab
   val navBackStackEntry by navController.currentBackStackEntryAsState()
   val currentDestination = navBackStackEntry?.destination
 
-  val trackingEngine = remember { TrackingEngine(repository) }
 
   AppTheme {
     Scaffold(
@@ -72,14 +73,17 @@ fun App(repository: AppRepository) {
         modifier = Modifier.padding(innerPadding)
       ) {
         composable<Screen.Home> {
-          HomeScreen(viewModel = viewModel { AppListViewModel(repository, trackingEngine) })
+          HomeScreen(viewModel = viewModel { AppListViewModel(
+            sessionRepository = appContainer.sessionRepository,
+            configRepository = appContainer.configRepository,
+            trackingEngine = appContainer.trackingEngine)
+          })
         }
         composable<Screen.AppLibrary> {
-          AppLibraryScreen(viewModel = viewModel { AppLibraryViewModel(repository) })
+          AppLibraryScreen(viewModel = viewModel { AppLibraryViewModel(appContainer.processRepository, appContainer.configRepository) })
         }
         composable<Screen.RulesManager> {
-          // We will build this next!
-          Text("Rules Manager Coming Soon", modifier = Modifier.fillMaxSize())
+          RulesManagerScreen(viewModel = viewModel { RulesViewModel(appContainer.configRepository) })
         }
       }
     }

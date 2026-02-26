@@ -17,7 +17,9 @@ fun RuleLineWithCategory.toDomain(): RuleLine {
             id = this.category.id,
             name = this.category.name,
             isProductive = this.category.isProductive
-        )
+        ),
+        maxConsecutiveSeconds = this.line.maxConsecutiveSeconds,
+        maxTotalSeconds = this.line.maxTotalSeconds
     )
 }
 

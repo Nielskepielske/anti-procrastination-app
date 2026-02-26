@@ -8,5 +8,7 @@ data class RuleLine(
     val ruleId: String,
     val name: String,
     val category: Category,
-    val isProductive: Boolean
+    val isProductive: Boolean,
+    val maxConsecutiveSeconds: Long,
+    val maxTotalSeconds: Long
 )

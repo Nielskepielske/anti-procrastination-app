@@ -35,6 +35,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.constraintlayout.compose.ConstraintLayout
 import androidx.constraintlayout.compose.Dimension
+import com.example.procrastination_detection.ui.components.RuleSelectorDropdown
 
 @Composable
 fun HomeScreen(viewModel: AppListViewModel) {
@@ -70,6 +71,10 @@ fun HomeScreen(viewModel: AppListViewModel) {
         ) {
             // --- HEADER: Current Status ---
             StatusCard(activeApp = activeApp, isProcrastinating = isProcrastinating, consecutiveSeconds = consecutiveSeconds.toInt())
+
+            RuleSelectorDropdown(
+                viewModel = viewModel,
+            )
 
             Spacer(modifier = Modifier.Companion.height(24.dp))
 
@@ -164,10 +169,10 @@ fun AppStatRow(appName: String, seconds: Long, isProductive: Boolean) {
             .fillMaxWidth()
             .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(12.dp))
             .padding(16.dp),
-        verticalAlignment = Alignment.Companion.CenterVertically,
+        verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
-        Row(verticalAlignment = Alignment.Companion.CenterVertically) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
             // Little color dot
             Box(
                 modifier = Modifier.Companion.size(12.dp)

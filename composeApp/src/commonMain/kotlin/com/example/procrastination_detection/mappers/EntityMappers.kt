@@ -38,5 +38,7 @@ fun RuleLine.toEntity() = RuleLineEntity(
     ruleId = this.ruleId,
     name = this.name,
     categoryId = this.category.id,
-    isProductive = this.isProductive
+    isProductive = this.isProductive,
+    maxConsecutiveSeconds = this.maxConsecutiveSeconds,
+    maxTotalSeconds = this.maxTotalSeconds
 )

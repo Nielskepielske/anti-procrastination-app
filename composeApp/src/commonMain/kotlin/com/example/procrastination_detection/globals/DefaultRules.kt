@@ -26,7 +26,9 @@ object DefaultRules {
             ruleId = baseRuleId,
             name = "Follow Default Category",
             category = defaultCategory,
-            isProductive = defaultCategory.isProductive
+            isProductive = defaultCategory.isProductive,
+            maxConsecutiveSeconds = 0L,
+            maxTotalSeconds = 0L
         )
 
         // 4. Finally, assemble the Rule with its lines

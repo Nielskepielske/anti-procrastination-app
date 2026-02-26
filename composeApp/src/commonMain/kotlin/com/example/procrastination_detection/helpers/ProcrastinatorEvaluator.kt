@@ -24,24 +24,32 @@ object ProcrastinationEvaluator {
         }
     }
 
-    fun evaluateProcrastination(monitoredProcess: MonitoredProcess): Boolean {
-        val category = monitoredProcess.process.category
+    fun evaluateProcrastination(process: MonitoredProcess, activeRule: Rule): Boolean {
+        val category = process.process.category
 
-        // 1. If it's a productive app, they are never procrastinating.
-        if (category.isProductive) {
+        // 1. Find the custom limit for this specific category in the active rule
+        val ruleLine = activeRule.lines.find { it.category.id == category.id }
+
+        // 2. Fallback: If the user didn't configure this category in the rule,
+        // we just rely on the category's global "isProductive" default.
+        if (ruleLine == null) {
+            return !category.isProductive
+        }
+
+        // 3. If the rule explicitly says this category is Productive, they are safe!
+        if (ruleLine.isProductive) {
+
+            println(ruleLine.isProductive)
             return false
         }
 
-        // 2. Define our thresholds (in seconds).
-        // In the future, we will pull these from your RuleLine database!
-        val maxConsecutiveAllowance = 5 * 60 // 5 minutes of continuous distraction allowed
-        val maxTotalAllowance = 15 * 60      // 15 minutes of total distraction allowed per session
+        // 4. It is an unproductive category. Let's check the math!
+        // (If the limit is 0, they get 0 seconds, meaning instant procrastination)
+        val isOverConsecutive = process.consecutiveSeconds >= ruleLine.maxConsecutiveSeconds
+        //val isOverTotal = process.totalSeconds >= ruleLine.maxTotalSeconds
 
-        // 3. Check if they have breached either limit
-        val isOverConsecutiveLimit = monitoredProcess.consecutiveSeconds >= maxConsecutiveAllowance
-        val isOverTotalLimit = monitoredProcess.totalSeconds >= maxTotalAllowance
-
-        // 4. If they broke either rule while on an unproductive app, they are procrastinating!
-        return isOverConsecutiveLimit || isOverTotalLimit
+        //return isOverConsecutive || isOverTotal
+        print(ruleLine.maxConsecutiveSeconds)
+        return isOverConsecutive
     }
 }

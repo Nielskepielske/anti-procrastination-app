@@ -2,7 +2,7 @@
   "formatVersion": 1,
   "database": {
     "version": 1,
-    "identityHash": "21114db1991a01d8e2a3d5b43075b787",
+    "identityHash": "6842b3e6c242f9fc1e4f369c87f69850",
     "entities": [
       {
         "tableName": "sessions",
@@ -102,7 +102,7 @@
       },
       {
         "tableName": "rule_lines",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `ruleId` TEXT NOT NULL, `name` TEXT NOT NULL, `categoryId` TEXT NOT NULL, `isProductive` INTEGER NOT NULL, PRIMARY KEY(`id`))",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `ruleId` TEXT NOT NULL, `name` TEXT NOT NULL, `categoryId` TEXT NOT NULL, `isProductive` INTEGER NOT NULL, `maxConsecutiveSeconds` INTEGER NOT NULL, `maxTotalSeconds` INTEGER NOT NULL, PRIMARY KEY(`id`), FOREIGN KEY(`ruleId`) REFERENCES `rules`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
         "fields": [
           {
             "fieldPath": "id",
@@ -133,6 +133,18 @@
             "columnName": "isProductive",
             "affinity": "INTEGER",
             "notNull": true
+          },
+          {
+            "fieldPath": "maxConsecutiveSeconds",
+            "columnName": "maxConsecutiveSeconds",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "maxTotalSeconds",
+            "columnName": "maxTotalSeconds",
+            "affinity": "INTEGER",
+            "notNull": true
           }
         ],
         "primaryKey": {
@@ -140,7 +152,20 @@
           "columnNames": [
             "id"
           ]
-        }
+        },
+        "foreignKeys": [
+          {
+            "table": "rules",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "ruleId"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          }
+        ]
       },
       {
         "tableName": "categories",
@@ -227,7 +252,7 @@
     ],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '21114db1991a01d8e2a3d5b43075b787')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '6842b3e6c242f9fc1e4f369c87f69850')"
     ]
   }
 }

@@ -11,11 +11,11 @@ fun main() = application {
     val dbBuilder = getDatabaseBuilder()
     val database = getRoomDatabase(dbBuilder)
 
-    // 2. Create the Repository
-    val localRepo = LocalAppRepository(
+    val appContainer = AppContainer(
         processDao = database.processDao(),
         sessionDao = database.sessionDao(),
-        ruleDao = database.ruleDao()
+        ruleDao = database.ruleDao(),
+        categoryDao = database.categoryDao()
     )
 
     // 3. Pass it to the shared App Composable
@@ -23,6 +23,6 @@ fun main() = application {
         onCloseRequest = ::exitApplication,
         title = "Procrastination Detector"
     ) {
-        App(repository = localRepo)
+        App(appContainer = appContainer)
     }
 }

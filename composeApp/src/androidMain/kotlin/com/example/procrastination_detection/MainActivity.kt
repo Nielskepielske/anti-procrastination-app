@@ -8,11 +8,15 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.tooling.preview.Preview
 import com.example.procrastination_detection.database.getDatabaseBuilder
 import com.example.procrastination_detection.database.getRoomDatabase
+import com.example.procrastination_detection.helpers.AndroidAppBridge
 import com.example.procrastination_detection.repositories.LocalAppRepository
+import com.example.procrastination_detection.ui.UsagePermissionScreen
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        AndroidAppBridge.applicationContext = this.applicationContext
 
         // 1. Build the Database (applicationContext is perfectly valid here!)
         val dbBuilder = getDatabaseBuilder(applicationContext)
@@ -27,7 +31,9 @@ class MainActivity : ComponentActivity() {
 
         // 3. Pass it to your shared App composable
         setContent {
-            App(appContainer = appContainer)
+            UsagePermissionScreen {
+                App(appContainer = appContainer)
+            }
         }
     }
 }

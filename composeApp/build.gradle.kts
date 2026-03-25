@@ -10,6 +10,7 @@ plugins {
     alias(libs.plugins.ksp)
     alias(libs.plugins.androidx.room)
     kotlin("plugin.serialization") version "2.0.20"
+    id("com.google.gms.google-services") version "4.4.4" apply false
 }
 
 repositories {
@@ -41,6 +42,9 @@ kotlin {
         androidMain.dependencies {
             implementation(libs.compose.uiToolingPreview)
             implementation(libs.androidx.activity.compose)
+
+            // Text recognition
+            implementation(libs.text.recognition)
         }
         commonMain.dependencies {
             implementation(libs.compose.runtime)
@@ -66,6 +70,9 @@ kotlin {
 
             // Constrainlayout
             implementation(libs.constraintlayout.compose.multiplatform)
+
+            // Notifier
+            api("io.github.mirzemehdi:kmpnotifier:1.6.1") // in iOS export this library
         }
         commonTest.dependencies {
             implementation(libs.kotlin.test)
@@ -75,6 +82,14 @@ kotlin {
             implementation(libs.kotlinx.coroutinesSwing)
             // desktopMain sourceSet
             implementation(libs.oshi.core)
+
+            // Text recognition
+            implementation(libs.net.tess4j)
+        }
+
+        jvmTest.dependencies {
+            implementation(kotlin("test"))
+            implementation(libs.jetbrains.kotlinx.coroutines.test)
         }
     }
 }
@@ -123,14 +138,19 @@ dependencies {
     add("kspJvm", libs.androidx.room.compiler)
 }
 
+val myAppPackageName = "com.example.procrastination_detection"
 compose.desktop {
     application {
-        mainClass = "com.example.procrastination_detection.MainKt"
+        mainClass = "$myAppPackageName.MainKt"
 
         nativeDistributions {
             targetFormats(TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Deb)
-            packageName = "com.example.procrastination_detection"
+            packageName = myAppPackageName
             packageVersion = "1.0.0"
         }
     }
+}
+
+tasks.withType<JavaExec> {
+    systemProperty("MY_APP_PROCESS_NAME", myAppPackageName)
 }

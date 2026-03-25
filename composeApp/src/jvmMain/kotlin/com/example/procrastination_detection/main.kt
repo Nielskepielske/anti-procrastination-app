@@ -1,10 +1,41 @@
 package com.example.procrastination_detection
 
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.Button
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Window
+import androidx.compose.ui.window.WindowPlacement
 import androidx.compose.ui.window.application
+import androidx.compose.ui.window.rememberWindowState
 import com.example.procrastination_detection.database.getDatabaseBuilder
 import com.example.procrastination_detection.database.getRoomDatabase
+import com.example.procrastination_detection.engine.FocusEnforcerEngine
+import com.example.procrastination_detection.factories.WindowStyleManagerFactory
 import com.example.procrastination_detection.repositories.LocalAppRepository
+import com.mmk.kmpnotifier.extensions.composeDesktopResourcesPath
+import com.mmk.kmpnotifier.notification.NotificationImage
+import com.mmk.kmpnotifier.notification.Notifier
+import com.mmk.kmpnotifier.notification.NotifierManager
+import com.mmk.kmpnotifier.notification.configuration.NotificationPlatformConfiguration
+import java.io.File
+import kotlin.math.max
+import kotlin.math.min
+import kotlin.random.Random
 
 fun main() = application {
     // 1. Build the DB using the JVM-specific file path
@@ -18,11 +49,67 @@ fun main() = application {
         categoryDao = database.categoryDao()
     )
 
+    // Notification manager
+    val iconUrl = Thread.currentThread().contextClassLoader.getResource("ic_notification.png")
+    val iconPath = iconUrl?.let { File(it.toURI()).absolutePath } ?: ""
+
+    // 2. Initialize the Notifier
+    NotifierManager.initialize(
+        NotificationPlatformConfiguration.Desktop(
+            notificationIconPath = iconPath
+        )
+    )
+
+    // Focus enforcer
+    val focusEngine = remember { appContainer.focusEnforcerEngine }
+    val overlayState by focusEngine.overlayState.collectAsState()
+
+
     // 3. Pass it to the shared App Composable
     Window(
         onCloseRequest = ::exitApplication,
         title = "Procrastination Detector"
     ) {
         App(appContainer = appContainer)
+    }
+
+
+    if (overlayState.isVisible) {
+        Window(
+            onCloseRequest = { /* Do nothing, they can't close it easily! */ },
+            title = "AggressiveOverlay", // Crucial for Hyprland rules!
+            undecorated = true,
+            transparent = true,
+            alwaysOnTop = true,
+            state = rememberWindowState()
+        ) {
+            // The UI they are forced to look at
+            val styleManager = remember { WindowStyleManagerFactory.create(window) }
+
+//             When your logic dictates a change:
+            LaunchedEffect(Unit) {
+//                val newOpacity = 0.5f + (overlayState.aggressionLevel * 0.1f)
+//                println("Setting opacity to $newOpacity")
+//                styleManager.setWindowOpacity(newOpacity)
+                styleManager.setWindowOpacity(0.5f) // Serves mostly to induce the hyprctl rules in the beginning for the culling
+            }
+
+            val dynamicOpacity = min((overlayState.aggressionLevel * 0.1f), 1.0f)
+
+            val animatedOpacity by animateFloatAsState(targetValue = dynamicOpacity, animationSpec = tween(durationMillis = 500))
+
+            Box(modifier = Modifier
+                .fillMaxSize()
+                .graphicsLayer { alpha = animatedOpacity }
+                .background(Color.White)
+                .padding(40.dp)
+            ) {
+                Text("STOP PROCRASTINATING. Level: ${overlayState.aggressionLevel}")
+                Button(onClick = { focusEngine.onOverlayDismissed() }) {
+                    Text("I'll go back to work (Dismiss)")
+                }
+
+            }
+        }
     }
 }

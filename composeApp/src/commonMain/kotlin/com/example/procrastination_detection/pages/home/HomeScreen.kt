@@ -109,7 +109,7 @@ fun StatusCard(activeApp: String, isProcrastinating: Boolean, consecutiveSeconds
     val statusText = if (isProcrastinating) "PROCRASTINATING" else "FOCUSING"
 
     Card(
-        modifier = Modifier.Companion.fillMaxWidth(),
+        modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
@@ -175,10 +175,10 @@ fun AppStatRow(appName: String, seconds: Long, isProductive: Boolean) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             // Little color dot
             Box(
-                modifier = Modifier.Companion.size(12.dp)
+                modifier = Modifier.size(12.dp)
                     .background(indicatorColor, RoundedCornerShape(6.dp))
             )
-            Spacer(modifier = Modifier.Companion.width(12.dp))
+            Spacer(modifier = Modifier.width(12.dp))
             Text(text = appName, color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.Companion.Medium)
         }
         Text(text = "${minutes}m ${seconds % 60}s", color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f))

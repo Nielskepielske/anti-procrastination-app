@@ -21,6 +21,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.example.procrastination_detection.engine.TrackingEngine
+import com.example.procrastination_detection.helpers.getMyAppProcessName
 import com.example.procrastination_detection.interfaces.AppRepository
 import com.example.procrastination_detection.navigation.Screen
 import com.example.procrastination_detection.pages.home.AppListViewModel
@@ -39,6 +40,7 @@ fun App(appContainer: AppContainer) {
   val navBackStackEntry by navController.currentBackStackEntryAsState()
   val currentDestination = navBackStackEntry?.destination
 
+  println(getMyAppProcessName())
 
   AppTheme {
     Scaffold(

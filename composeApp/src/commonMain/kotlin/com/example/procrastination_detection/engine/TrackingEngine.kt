@@ -2,6 +2,8 @@ package com.example.procrastination_detection.engine
 
 import com.example.procrastination_detection.helpers.ProcrastinationEvaluator
 import com.example.procrastination_detection.helpers.getActiveApp
+import com.example.procrastination_detection.helpers.getMyAppProcessName
+import com.example.procrastination_detection.helpers.sendDistractionAlert
 import com.example.procrastination_detection.interfaces.AppRepository
 import com.example.procrastination_detection.interfaces.SessionRepository
 import com.example.procrastination_detection.models.db.Category
@@ -15,7 +17,9 @@ import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
 
 class TrackingEngine(
-    private val sessionRepository: SessionRepository
+    private val sessionRepository: SessionRepository,
+    private val focusEnforcerEngine: FocusEnforcerEngine,
+    private val browserAnalyserEngine: BrowserAnalyserEngine? = null
 ) {
     // 1. The Engine's lifecycle (lives as long as the TrackingEngine object does)
     private val engineScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
@@ -37,6 +41,12 @@ class TrackingEngine(
     private val _currentSessionId = MutableStateFlow("")
     val currentSessionId = _currentSessionId.asStateFlow()
 
+    private val _lastTimeSinceMessageSent = MutableStateFlow(0)
+    val lastTimeSinceMessageSent = _lastTimeSinceMessageSent.asStateFlow()
+
+    private val _lastTimeSinceProcrastination = MutableStateFlow(0)
+    val lastTimeSinceProcrastination = _lastTimeSinceProcrastination.asStateFlow()
+
     // 3. The Control Function
     fun toggleTracking(interval: Long, defaultRule: Rule) {
         if (_isTracking.value) {
@@ -44,6 +54,7 @@ class TrackingEngine(
             _isTracking.value = false
             _currentActiveApp.value = "Paused"
             _isProcrastinating.value = false
+            focusEnforcerEngine.stopEnforcement()
         } else {
             _isTracking.value = true
             startMonitoringLoop(interval, defaultRule)
@@ -60,12 +71,19 @@ class TrackingEngine(
             var previousActiveApp = ""
 
             while (isActive) {
-                val currentActiveApp = getActiveApp() ?: "default"
+                var currentActiveApp = getActiveApp() ?: "default"
+
                 val activeRule = sessionRepository.getActiveRuleForSession(session.id)
 
                 // Inside your start() loop, right after you calculate 'currentActiveApp':
-                _currentActiveApp.value = currentActiveApp ?: "None"
+                if(!currentActiveApp.contains(getMyAppProcessName())){
+                    _currentActiveApp.value = currentActiveApp ?: "None"
+                }else{
+                    println("in main app")
+                    currentActiveApp = _currentActiveApp.value
+                }
 
+                // This means we change apps
                 if(currentActiveApp != previousActiveApp){
                     sessionRepository.resetConsecutiveTimeForOtherApps(session.id, currentActiveApp ?: "default")
                     previousActiveApp = currentActiveApp
@@ -104,11 +122,37 @@ class TrackingEngine(
                     )
                 }
 
+                // Activate the browser analyser
+                browserAnalyserEngine?.onApplicationForegrounded(processToSave.process.category.name)
+
                 // 3. WRITE: Give the whole object back to the repository
                 sessionRepository.saveMonitoredProcess(processToSave)
 
+                val oldIsProcrastinating = isProcrastinating.value
                 _isProcrastinating.value = ProcrastinationEvaluator.evaluateProcrastination(processToSave, activeRule)
                 _consecutiveSeconds.value = processToSave.consecutiveSeconds
+
+                // Start FocusEnforcerEngine
+                if(oldIsProcrastinating != isProcrastinating.value && isProcrastinating.value){
+                    focusEnforcerEngine.startEnforcement(engineScope)
+                }else if(!isProcrastinating.value){
+                    focusEnforcerEngine.stopEnforcement()
+                }
+
+
+                // Send a notification every 10 seconds if the user is procrastinating
+                if(isProcrastinating.value && _lastTimeSinceMessageSent.value >= 10){
+                    _lastTimeSinceMessageSent.value = 0
+                    _lastTimeSinceProcrastination.value = 0
+                    sendDistractionAlert("Distraction Alert", "You are procrastinating!")
+                }else if(isProcrastinating.value){
+                    _lastTimeSinceMessageSent.value += interval.toInt()
+                    _lastTimeSinceProcrastination.value = 0
+                }else{
+                    _lastTimeSinceMessageSent.value = 0
+                    _lastTimeSinceProcrastination.value += interval.toInt()
+                    focusEnforcerEngine.lessenPenalty(_lastTimeSinceProcrastination.value)
+                }
 
                 delay(interval * 1000L)
             }

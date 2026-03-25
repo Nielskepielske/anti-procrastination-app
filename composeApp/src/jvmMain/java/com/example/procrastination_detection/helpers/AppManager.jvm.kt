@@ -2,6 +2,7 @@ package com.example.procrastination_detection.helpers
 
 // In desktopMain/src/desktopMain/kotlin/AppManager.desktop.kt
 import java.io.BufferedReader
+import java.io.File
 import java.io.InputStreamReader
 
 actual fun getActiveGuiApps(): List<String> {
@@ -316,4 +317,9 @@ private fun getWindowsActiveApp(): String? {
         process.waitFor()
         activeApp?.takeIf { it.isNotEmpty() }
     } catch (e: Exception) { null }
+}
+
+actual fun getMyAppProcessName(): String {
+    return (System.getProperty("MY_APP_PROCESS_NAME")
+        ?: "com.example.procrastination_detection").replace(".", "-")
 }

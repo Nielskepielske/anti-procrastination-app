@@ -5,6 +5,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.procrastination_detection.engine.FocusEnforcerEngine
 import com.example.procrastination_detection.engine.TrackingEngine
 import com.example.procrastination_detection.helpers.getActiveApp
 import com.example.procrastination_detection.helpers.getActiveGuiApps
@@ -37,7 +38,7 @@ import kotlin.uuid.Uuid
 class AppListViewModel(
     private val sessionRepository: SessionRepository,
     private val configRepository: ConfigRepository,
-    val trackingEngine: TrackingEngine,
+    val trackingEngine: TrackingEngine
 ) : ViewModel() {
     val monitoredProcesses = sessionRepository.monitoredProcesses
 

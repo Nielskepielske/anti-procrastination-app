@@ -1,10 +1,12 @@
 package com.example.procrastination_detection.helpers
 
+import android.app.Application
 import android.app.usage.UsageEvents
 import android.app.usage.UsageStatsManager
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.os.Build
 
 // --- GET ALL APPS (Launchable Apps) ---
 actual fun getActiveGuiApps(): List<String> {
@@ -56,4 +58,13 @@ actual fun getActiveApp(): String? {
     }
 
     return null
+}
+
+actual fun getMyAppProcessName(): String {
+    return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+        Application.getProcessName() ?: "Unknown"
+    } else {
+        // Fallback for older Android versions (though you likely know your package name)
+        "com.yourcompany.focusapp"
+    }
 }

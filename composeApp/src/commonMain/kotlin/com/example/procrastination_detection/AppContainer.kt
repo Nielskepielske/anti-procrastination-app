@@ -4,7 +4,11 @@ import com.example.procrastination_detection.database.CategoryDao
 import com.example.procrastination_detection.database.ProcessDao
 import com.example.procrastination_detection.database.RuleDao
 import com.example.procrastination_detection.database.SessionDao
+import com.example.procrastination_detection.engine.BrowserAnalyserEngine
+import com.example.procrastination_detection.engine.FocusEnforcerEngine
 import com.example.procrastination_detection.engine.TrackingEngine
+import com.example.procrastination_detection.helpers.BrowserAnalyserConfig
+import com.example.procrastination_detection.helpers.LocalUrlExtractor
 import com.example.procrastination_detection.interfaces.ConfigRepository
 import com.example.procrastination_detection.interfaces.ProcessRepository
 import com.example.procrastination_detection.interfaces.SessionRepository
@@ -28,7 +32,17 @@ class AppContainer(
         LocalSessionRepository(sessionDao, processDao, ruleDao)
     }
 
-    val trackingEngine: TrackingEngine by lazy {
-        TrackingEngine(sessionRepository)
+
+
+    val focusEnforcerEngine: FocusEnforcerEngine by lazy {
+        FocusEnforcerEngine()
     }
+    val browserAnalyserEngine: BrowserAnalyserEngine by lazy {
+        BrowserAnalyserEngine(urlExtractor = LocalUrlExtractor())
+    }
+    val trackingEngine: TrackingEngine by lazy {
+        TrackingEngine(sessionRepository, focusEnforcerEngine, browserAnalyserEngine)
+    }
+
+
 }

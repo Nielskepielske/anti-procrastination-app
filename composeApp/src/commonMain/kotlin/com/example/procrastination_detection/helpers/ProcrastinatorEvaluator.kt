@@ -49,7 +49,7 @@ object ProcrastinationEvaluator {
         //val isOverTotal = process.totalSeconds >= ruleLine.maxTotalSeconds
 
         //return isOverConsecutive || isOverTotal
-        print(ruleLine.maxConsecutiveSeconds)
+        //println(ruleLine.maxConsecutiveSeconds)
         return isOverConsecutive
     }
 }

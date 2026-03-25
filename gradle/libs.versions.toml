@@ -15,6 +15,7 @@ constraintlayoutComposeMultiplatform = "0.6.1"
 junit = "4.13.2"
 kotlin = "2.3.0"
 kotlinx-coroutines = "1.10.2"
+kotlinxCoroutinesTest = "1.10.2"
 kotlinxSerializationJson = "1.10.0"
 lifecycleViewmodelCompose = "2.8.0"
 material3 = "1.10.0-alpha05"
@@ -24,9 +25,12 @@ oshiCore = "6.9.3"
 room = "2.8.4"
 sqlite = "2.6.2"
 ksp = "2.3.5"
+tess4jVersion = "5.18.0"
+textRecognition = "16.0.1"
 
 [libraries]
 constraintlayout-compose-multiplatform = { module = "tech.annexflow.compose:constraintlayout-compose-multiplatform", version.ref = "constraintlayoutComposeMultiplatform" }
+jetbrains-kotlinx-coroutines-test = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-test", version.ref = "kotlinxCoroutinesTest" }
 kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test", version.ref = "kotlin" }
 kotlin-testJunit = { module = "org.jetbrains.kotlin:kotlin-test-junit", version.ref = "kotlin" }
 junit = { module = "junit:junit", version.ref = "junit" }
@@ -49,12 +53,16 @@ kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serializa
 lifecycle-viewmodel-compose-v280 = { module = "org.jetbrains.androidx.lifecycle:lifecycle-viewmodel-compose", version.ref = "lifecycleViewmodelCompose" }
 material-icons-extended = { module = "org.jetbrains.compose.material:material-icons-extended", version.ref = "materialIconsExtended" }
 navigation-compose = { module = "org.jetbrains.androidx.navigation:navigation-compose", version.ref = "navigationCompose" }
+net-tess4j = { module = "net.sourceforge.tess4j:tess4j", version.ref = "tess4jVersion" }
 oshi-core = { module = "com.github.oshi:oshi-core", version.ref = "oshiCore" }
 
 # room libraries
 androidx-sqlite-bundled = { module = "androidx.sqlite:sqlite-bundled", version.ref = "sqlite" }
 androidx-room-runtime = { module = "androidx.room:room-runtime", version.ref = "room" }
 androidx-room-compiler = { module = "androidx.room:room-compiler", version.ref = "room" }
+
+# Text recognition
+text-recognition = { module = "com.google.mlkit:text-recognition", version.ref = "textRecognition" }
 
 [plugins]
 androidApplication = { id = "com.android.application", version.ref = "agp" }

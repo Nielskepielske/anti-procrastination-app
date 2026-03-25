@@ -8,8 +8,14 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import com.example.procrastination_detection.helpers.sendDistractionAlert
 import com.example.procrastination_detection.models.db.Category
 import com.example.procrastination_detection.models.db.Process
+import com.mmk.kmpnotifier.notification.NotifierManager
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.IO
+import kotlinx.coroutines.launch
 
 @Composable
 fun AppLibraryScreen(viewModel: AppLibraryViewModel) {
@@ -18,6 +24,7 @@ fun AppLibraryScreen(viewModel: AppLibraryViewModel) {
 
     // State to track which app we are currently editing (if any)
     var appToEdit by remember { mutableStateOf<Process?>(null) }
+
 
     Scaffold { padding ->
         LazyColumn(contentPadding = padding) {

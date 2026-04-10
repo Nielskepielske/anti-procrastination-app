@@ -153,4 +153,13 @@ compose.desktop {
 
 tasks.withType<JavaExec> {
     systemProperty("MY_APP_PROCESS_NAME", myAppPackageName)
+    // Stops Java from taking a screenshot of the desktop
+    environment("_JAVA_AWT_WM_NONREPARENTING", "1")
+
+    // Encourages Compose/Skiko to bypass XWayland entirely if possible
+    environment("GDK_BACKEND", "wayland")
+
+//    // Fixes font anti-aliasing on transparent surfaces
+//    systemProperty("awt.useSystemAAFontSettings", "on")
+//    systemProperty("swing.aatext", "true")
 }

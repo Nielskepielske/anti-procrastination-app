@@ -66,6 +66,8 @@ class AppListViewModel(
             availableRules.collect { rules ->
                 if (selectedRule == null && rules.isNotEmpty()) {
                     selectedRule = rules.first()
+                    // Auto-resume tracking if there was a lingering active session
+                    trackingEngine.resumeIfOngoing(interval = interval, defaultRule = rules.first())
                 }
             }
         }

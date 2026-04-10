@@ -25,8 +25,10 @@ actual fun getActiveGuiApps(): List<String> {
     }.distinct().sorted()
 }
 
+import com.example.procrastination_detection.models.WindowInfo
+
 // --- GET CURRENT ACTIVE APP ---
-actual fun getActiveApp(): String? {
+actual fun getActiveApp(): WindowInfo? {
     val context = AndroidAppBridge.applicationContext
     val usageStatsManager = context.getSystemService(Context.USAGE_STATS_SERVICE) as UsageStatsManager
 
@@ -51,9 +53,10 @@ actual fun getActiveApp(): String? {
         val pm = context.packageManager
         return try {
             val appInfo = pm.getApplicationInfo(currentAppPackage, 0)
-            pm.getApplicationLabel(appInfo).toString()
+            val title = pm.getApplicationLabel(appInfo).toString()
+            WindowInfo(currentAppPackage, title, currentAppPackage)
         } catch (e: PackageManager.NameNotFoundException) {
-            currentAppPackage // Fallback to package name if label fails
+            WindowInfo(currentAppPackage, currentAppPackage, currentAppPackage) // Fallback to package name if label fails
         }
     }
 

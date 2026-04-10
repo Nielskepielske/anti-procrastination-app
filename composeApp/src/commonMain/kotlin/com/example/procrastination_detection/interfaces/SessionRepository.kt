@@ -15,4 +15,6 @@ interface SessionRepository {
     suspend fun updateSessionRule(sessionId: String, ruleId: String)
     suspend fun getActiveRuleForSession(sessionId: String): Rule
     suspend fun resetConsecutiveTimeForOtherApps(sessionId: String, activeAppName: String)
+    suspend fun getOngoingSession(): Session?
+    suspend fun endSession()
 }

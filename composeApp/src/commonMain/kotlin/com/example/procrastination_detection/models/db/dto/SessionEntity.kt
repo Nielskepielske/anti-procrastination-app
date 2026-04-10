@@ -8,5 +8,6 @@ data class SessionEntity(
     @PrimaryKey
     val id: String,
     val name: String,
-    val ruleId: String
+    val ruleId: String,
+    val isOngoing: Boolean = true
 )

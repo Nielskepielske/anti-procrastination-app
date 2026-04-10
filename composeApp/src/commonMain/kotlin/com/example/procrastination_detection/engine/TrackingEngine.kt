@@ -50,14 +50,27 @@ class TrackingEngine(
     // 3. The Control Function
     fun toggleTracking(interval: Long, defaultRule: Rule) {
         if (_isTracking.value) {
+            engineScope.launch { sessionRepository.endSession() }
             monitoringJob?.cancel()
             _isTracking.value = false
             _currentActiveApp.value = "Paused"
             _isProcrastinating.value = false
-            focusEnforcerEngine.stopEnforcement()
+            focusEnforcerEngine.resetAllEnforcements()
         } else {
             _isTracking.value = true
             startMonitoringLoop(interval, defaultRule)
+        }
+    }
+
+    // Call this specifically on app boot to auto-continue any lingering sessions
+    fun resumeIfOngoing(interval: Long, defaultRule: Rule) {
+        if (_isTracking.value) return
+        engineScope.launch {
+            val session = sessionRepository.getOngoingSession()
+            if (session != null && !_isTracking.value) {
+                _isTracking.value = true
+                startMonitoringLoop(interval, defaultRule)
+            }
         }
     }
 
@@ -65,37 +78,41 @@ class TrackingEngine(
     @OptIn(ExperimentalUuidApi::class)
     private fun startMonitoringLoop(interval: Long, defaultRule: Rule) {
         monitoringJob = engineScope.launch {
-            val sessionName = "Session " + Uuid.random().toString().take(4)
-            val session = sessionRepository.getOrCreateSession(sessionName, defaultRule)
+            var session = sessionRepository.getOngoingSession()
+            if (session == null) {
+                val sessionName = "Session " + Uuid.random().toString().take(4)
+                session = sessionRepository.getOrCreateSession(sessionName, defaultRule)
+            }
             _currentSessionId.value = session.id
-            var previousActiveApp = ""
+            var previousActiveAppClass = ""
 
             while (isActive) {
-                var currentActiveApp = getActiveApp() ?: "default"
+                val windowInfo = getActiveApp()
+                var currentActiveAppClass = windowInfo?.className ?: "default"
+                val currentActiveAppTitle = windowInfo?.title ?: "default"
 
                 val activeRule = sessionRepository.getActiveRuleForSession(session.id)
 
                 // Inside your start() loop, right after you calculate 'currentActiveApp':
-                if(!currentActiveApp.contains(getMyAppProcessName())){
-                    _currentActiveApp.value = currentActiveApp ?: "None"
+                if(!currentActiveAppClass.contains(getMyAppProcessName())){
+                    _currentActiveApp.value = currentActiveAppClass
                 }else{
                     println("in main app")
-                    currentActiveApp = _currentActiveApp.value
+                    currentActiveAppClass = _currentActiveApp.value
                 }
 
                 // This means we change apps
-                if(currentActiveApp != previousActiveApp){
-                    sessionRepository.resetConsecutiveTimeForOtherApps(session.id, currentActiveApp ?: "default")
-                    previousActiveApp = currentActiveApp
+                if(currentActiveAppClass != previousActiveAppClass){
+                    sessionRepository.resetConsecutiveTimeForOtherApps(session.id, currentActiveAppClass)
+                    previousActiveAppClass = currentActiveAppClass
                 }
 
                 // Using the evaluator we built previously (or checking the rule logic directly):
-                val currentProcess = sessionRepository.getMonitoredProcess(currentActiveApp ?: "default", session.id)
+                val currentProcess = sessionRepository.getMonitoredProcess(currentActiveAppClass, session.id)
                 val isProd = currentProcess?.process?.category?.isProductive ?: true
-                //_isProcrastinating.value = !isProd
 
                 // 1. READ: Get the existing object from the repository
-                val existingProcess = sessionRepository.getMonitoredProcess(currentActiveApp, session.id)
+                val existingProcess = sessionRepository.getMonitoredProcess(currentActiveAppClass, session.id)
 
                 // 2. MODIFY (or Create): Update the time
                 val processToSave = if (existingProcess != null) {
@@ -109,7 +126,7 @@ class TrackingEngine(
                         id = Uuid.random().toString(),
                         process = Process(
                             id = Uuid.random().toString(),
-                            name = currentActiveApp,
+                            name = currentActiveAppClass,
                             category = Category(
                                 id = Uuid.random().toString(),
                                 name = "default",
@@ -133,8 +150,10 @@ class TrackingEngine(
                 _consecutiveSeconds.value = processToSave.consecutiveSeconds
 
                 // Start FocusEnforcerEngine
+                val activeWindowId = windowInfo?.windowId?.takeIf { it.isNotEmpty() } ?: currentActiveAppTitle
+                
                 if(oldIsProcrastinating != isProcrastinating.value && isProcrastinating.value){
-                    focusEnforcerEngine.startEnforcement(engineScope)
+                    focusEnforcerEngine.startEnforcement(engineScope, currentActiveAppClass)
                 }else if(!isProcrastinating.value){
                     focusEnforcerEngine.stopEnforcement()
                 }

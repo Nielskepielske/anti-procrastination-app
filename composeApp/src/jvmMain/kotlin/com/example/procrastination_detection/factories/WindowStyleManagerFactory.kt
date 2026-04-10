@@ -41,8 +41,5 @@ object WindowStyleManagerFactory {
 }
 
 class DummyStyleManager : WindowStyleManager {
-    override fun setWindowOpacity(opacity: Float) {
-        TODO("Not yet implemented")
-    }
-
+    override suspend fun setWindowOpacity(opacity: Float, targetWindowId: String?) {}
 }

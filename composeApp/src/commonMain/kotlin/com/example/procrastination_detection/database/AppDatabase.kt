@@ -13,7 +13,7 @@ import com.example.procrastination_detection.models.db.dto.RuleEntity
 import com.example.procrastination_detection.models.db.dto.RuleLineEntity
 import com.example.procrastination_detection.models.db.dto.SessionEntity
 
-@Database(entities = [SessionEntity::class, MonitoredProcessEntity::class, RuleEntity::class, RuleLineEntity::class, CategoryEntity::class, ProcessEntity::class], version = 1)
+@Database(entities = [SessionEntity::class, MonitoredProcessEntity::class, RuleEntity::class, RuleLineEntity::class, CategoryEntity::class, ProcessEntity::class], version = 2)
 @ConstructedBy(AppDatabaseConstructor::class)
 abstract class AppDatabase : RoomDatabase() {
     abstract fun sessionDao(): SessionDao

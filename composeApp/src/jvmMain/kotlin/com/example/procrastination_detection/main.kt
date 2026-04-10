@@ -1,5 +1,4 @@
 package com.example.procrastination_detection
-
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
@@ -12,6 +11,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -62,54 +62,89 @@ fun main() = application {
 
     // Focus enforcer
     val focusEngine = remember { appContainer.focusEnforcerEngine }
-    val overlayState by focusEngine.overlayState.collectAsState()
-
+    val enforcedApps by focusEngine.enforcedApps.collectAsState()
+    val resetTrigger by focusEngine.resetAllTrigger.collectAsState()
 
     // 3. Pass it to the shared App Composable
     Window(
         onCloseRequest = ::exitApplication,
         title = "Procrastination Detector"
     ) {
+
+        val styleManager = remember { WindowStyleManagerFactory.create(window) }
+        val currentlyModifiedApps = remember { mutableSetOf<String>() }
+
+        LaunchedEffect(Unit) {
+                styleManager.setWindowOpacity(0.8f, "kitty")
+        }
+
+        LaunchedEffect(enforcedApps) {
+            enforcedApps.forEach { (appTitle, level) ->
+                val dynamicOpacity = kotlin.math.max(0.1f, 1.0f - (level * 0.1f))
+                styleManager.setWindowOpacity(dynamicOpacity, appTitle)
+                currentlyModifiedApps.add(appTitle)
+            }
+
+            // Restore apps that are no longer enforced
+            val removedApps = currentlyModifiedApps.filter { !enforcedApps.containsKey(it) }
+            removedApps.forEach {
+                styleManager.setWindowOpacity(1.0f, it)
+                currentlyModifiedApps.remove(it)
+            }
+        }
+
+        LaunchedEffect(resetTrigger) {
+            if (resetTrigger > 0) {
+                currentlyModifiedApps.forEach {
+                    styleManager.setWindowOpacity(1.0f, it)
+                }
+                currentlyModifiedApps.clear()
+            }
+        }
         App(appContainer = appContainer)
     }
 
 
-    if (overlayState.isVisible) {
-        Window(
-            onCloseRequest = { /* Do nothing, they can't close it easily! */ },
-            title = "AggressiveOverlay", // Crucial for Hyprland rules!
-            undecorated = true,
-            transparent = true,
-            alwaysOnTop = true,
-            state = rememberWindowState()
-        ) {
-            // The UI they are forced to look at
-            val styleManager = remember { WindowStyleManagerFactory.create(window) }
 
-//             When your logic dictates a change:
-            LaunchedEffect(Unit) {
-//                val newOpacity = 0.5f + (overlayState.aggressionLevel * 0.1f)
-//                println("Setting opacity to $newOpacity")
-//                styleManager.setWindowOpacity(newOpacity)
-                styleManager.setWindowOpacity(0.5f) // Serves mostly to induce the hyprctl rules in the beginning for the culling
-            }
 
-            val dynamicOpacity = min((overlayState.aggressionLevel * 0.1f), 1.0f)
+    // We use this to make the screen visible to our hyprland
+//    if(true){
+//        Window(
+//            onCloseRequest = { /* Do nothing, they can't close it easily! */ },
+//            title = "AggressiveOverlay", // Crucial for Hyprland rules!
+//            undecorated = true,
+//            transparent = true,
+//            alwaysOnTop = true,
+//            state = rememberWindowState()
+//        ) {
+//            // The UI they are forced to look at
+//            val styleManager = remember { WindowStyleManagerFactory.create(window) }
+//
+////             When your logic dictates a change:
+//            LaunchedEffect(Unit) {
+////                val newOpacity = 0.5f + (overlayState.aggressionLevel * 0.1f)
+////                println("Setting opacity to $newOpacity")
+////                styleManager.setWindowOpacity(newOpacity)
+//                styleManager.setWindowOpacity(0.5f) // Serves mostly to induce the hyprctl rules in the beginning for the culling
+//            }
+//
+//            //val dynamicOpacity = min((overlayState.aggressionLevel * 0.1f), 1.0f)
+//
+//            val animatedOpacity by animateFloatAsState(targetValue = 0.5f, animationSpec = tween(durationMillis = 500))
+//
+//            Box(modifier = Modifier
+//                .fillMaxSize()
+//                .graphicsLayer { alpha = animatedOpacity }
+//                .background(Color.White)
+//                .padding(40.dp)
+//            ) {
+////                Text("STOP PROCRASTINATING. Level: ${overlayState.aggressionLevel}")
+////                Button(onClick = { focusEngine.onOverlayDismissed() }) {
+////                    Text("I'll go back to work (Dismiss)")
+////                }
+//
+//            }
+//        }
+//    }
 
-            val animatedOpacity by animateFloatAsState(targetValue = dynamicOpacity, animationSpec = tween(durationMillis = 500))
-
-            Box(modifier = Modifier
-                .fillMaxSize()
-                .graphicsLayer { alpha = animatedOpacity }
-                .background(Color.White)
-                .padding(40.dp)
-            ) {
-                Text("STOP PROCRASTINATING. Level: ${overlayState.aggressionLevel}")
-                Button(onClick = { focusEngine.onOverlayDismissed() }) {
-                    Text("I'll go back to work (Dismiss)")
-                }
-
-            }
-        }
-    }
 }

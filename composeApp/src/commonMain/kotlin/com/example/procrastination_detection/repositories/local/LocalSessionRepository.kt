@@ -137,7 +137,20 @@ class LocalSessionRepository(
 
     override suspend fun resetConsecutiveTimeForOtherApps(sessionId: String, activeAppName: String) {
         processDao.resetConsecutiveTimeForOtherApps(sessionId, activeAppName)
+    }
 
+    override suspend fun getOngoingSession(): Session? {
+        val ongoing = sessionDao.getOngoingSession()
+        if (ongoing != null) {
+            activeSessionId.value = ongoing.session.id
+            return ongoing.toDomain()
+        }
+        return null
+    }
+
+    override suspend fun endSession() {
+        sessionDao.endAllSessions()
+        activeSessionId.value = null
     }
 
 }

@@ -8,6 +8,7 @@ data class Session(
     val name: String,
 
     val rule: Rule,
-    val processes: List<MonitoredProcess>
+    val processes: List<MonitoredProcess>,
+    val isOngoing: Boolean = true
 );
 

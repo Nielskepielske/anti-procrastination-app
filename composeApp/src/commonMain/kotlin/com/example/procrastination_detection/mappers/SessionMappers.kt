@@ -12,7 +12,8 @@ fun SessionFull.toDomain(): Session {
         name = this.session.name,
         // Using the mappers we defined in the previous steps
         rule = this.rule.toDomain(),
-        processes = this.processes.map { it.toDomain() }
+        processes = this.processes.map { it.toDomain() },
+        isOngoing = this.session.isOngoing
     )
 }
 
@@ -20,6 +21,7 @@ fun Session.toEntity(): SessionEntity {
     return SessionEntity(
         id = this.id,
         name = this.name,
-        ruleId = this.rule.id
+        ruleId = this.rule.id,
+        isOngoing = this.isOngoing
     )
 }

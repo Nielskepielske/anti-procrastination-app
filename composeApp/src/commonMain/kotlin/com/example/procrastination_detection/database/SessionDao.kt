@@ -34,4 +34,11 @@ interface SessionDao {
 
     @Query("UPDATE sessions SET ruleId = :ruleId WHERE id = :sessionId")
     suspend fun updateSessionRule(sessionId: String, ruleId: String)
+
+    @Transaction
+    @Query("SELECT * FROM sessions WHERE isOngoing = 1 ORDER BY id DESC LIMIT 1")
+    suspend fun getOngoingSession(): SessionFull?
+
+    @Query("UPDATE sessions SET isOngoing = 0 WHERE isOngoing = 1")
+    suspend fun endAllSessions()
 }

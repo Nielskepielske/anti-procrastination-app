@@ -73,6 +73,17 @@ kotlin {
 
             // Notifier
             api("io.github.mirzemehdi:kmpnotifier:1.6.1") // in iOS export this library
+
+            // Koin
+            implementation(libs.koin.core)
+            implementation(libs.koin.compose.viewmodel)
+
+            // DataStore
+            implementation(libs.androidx.datastore.preferences)
+            implementation(libs.androidx.datastore)
+
+            // Serialization
+            implementation(libs.kotlinx.serialization.core)
         }
         commonTest.dependencies {
             implementation(libs.kotlin.test)

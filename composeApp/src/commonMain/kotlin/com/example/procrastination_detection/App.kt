@@ -13,6 +13,7 @@ import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -30,62 +31,69 @@ import com.example.procrastination_detection.pages.library.AppLibraryScreen
 import com.example.procrastination_detection.pages.library.AppLibraryViewModel
 import com.example.procrastination_detection.pages.rule.RulesManagerScreen
 import com.example.procrastination_detection.pages.rule.RulesViewModel
+import com.example.procrastination_detection.ui.DashboardScreen
+import com.example.procrastination_detection.ui.DictionaryHubScreen
+import com.example.procrastination_detection.ui.ProfileManagerScreen
+import com.example.procrastination_detection.ui.AnalyticsScreen
 import com.example.procrastination_detection.ui.theme.AppTheme
+import org.koin.compose.viewmodel.koinViewModel
 
 
 @Composable
-fun App(appContainer: AppContainer) {
+fun App() {
   val navController = rememberNavController()
-  // Observe the current route to highlight the correct tab
   val navBackStackEntry by navController.currentBackStackEntryAsState()
-  val currentDestination = navBackStackEntry?.destination
-
-  println(getMyAppProcessName())
+  val currentRoute = navBackStackEntry?.destination?.route
 
   AppTheme {
     Scaffold(
       bottomBar = {
         NavigationBar {
           NavigationBarItem(
-            icon = { Icon(Icons.Default.Home, contentDescription = "Home") },
-            label = { Text("Home") },
-            // This is a simple way to check if we are on the Home screen
-            selected = currentDestination?.route?.contains("Home") == true,
-            onClick = { navController.navigate(Screen.Home) }
+            icon = { Icon(Icons.Default.Home, "Dashboard") },
+            label = { Text("Live") },
+            selected = currentRoute?.contains("Dashboard") == true,
+            onClick = { navController.navigate(Screen.Dashboard) }
           )
           NavigationBarItem(
-            icon = { Icon(Icons.Default.List, contentDescription = "Library") },
-            label = { Text("Library") },
-            selected = currentDestination?.route?.contains("AppLibrary") == true,
-            onClick = { navController.navigate(Screen.AppLibrary) }
+            icon = { Icon(Icons.Default.List, "Dictionary") },
+            label = { Text("Dictionary") },
+            selected = currentRoute?.contains("DictionaryHub") == true,
+            onClick = { navController.navigate(Screen.DictionaryHub) }
           )
           NavigationBarItem(
-            icon = { Icon(Icons.Default.Settings, contentDescription = "Rules") },
-            label = { Text("Rules") },
-            selected = currentDestination?.route?.contains("RulesManager") == true,
-            onClick = { navController.navigate(Screen.RulesManager) }
+            icon = { Icon(Icons.Default.Settings, "Profiles") },
+            label = { Text("Profiles") },
+            selected = currentRoute?.contains("ProfileManager") == true,
+            onClick = { navController.navigate(Screen.ProfileManager) }
+          )
+          NavigationBarItem(
+            icon = { Icon(Icons.Default.Info, "Analytics") },
+            label = { Text("Stats") },
+            selected = currentRoute?.contains("Analytics") == true,
+            onClick = { navController.navigate(Screen.Analytics) }
           )
         }
       }
     ) { innerPadding ->
-      // The NavHost sits INSIDE the Scaffold padding
+      // The Router
       NavHost(
         navController = navController,
-        startDestination = Screen.Home,
+        startDestination = Screen.Dashboard,
         modifier = Modifier.padding(innerPadding)
       ) {
-        composable<Screen.Home> {
-          HomeScreen(viewModel = viewModel { AppListViewModel(
-            sessionRepository = appContainer.sessionRepository,
-            configRepository = appContainer.configRepository,
-            trackingEngine = appContainer.trackingEngine)
-          })
+        composable<Screen.Dashboard> {
+          // Koin automatically creates the DashboardViewModel here!
+          DashboardScreen(viewModel = koinViewModel())
         }
-        composable<Screen.AppLibrary> {
-          AppLibraryScreen(viewModel = viewModel { AppLibraryViewModel(appContainer.processRepository, appContainer.configRepository) })
+        composable<Screen.DictionaryHub> {
+          DictionaryHubScreen(viewModel = koinViewModel())
         }
-        composable<Screen.RulesManager> {
-          RulesManagerScreen(viewModel = viewModel { RulesViewModel(appContainer.configRepository) })
+        composable<Screen.ProfileManager> {
+          ProfileManagerScreen(viewModel = koinViewModel())
+        }
+        composable<Screen.Analytics> {
+          AnalyticsScreen(viewModel = koinViewModel())
         }
       }
     }

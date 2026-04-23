@@ -1,4 +1,4 @@
-package com.example.procrastination_detection.ui
+package com.example.procrastination_detection.ui.dashboard
 
 import androidx.lifecycle.ViewModel
 import com.example.procrastination_detection.domain.event.SensorPayload

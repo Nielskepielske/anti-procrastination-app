@@ -1,4 +1,4 @@
-package com.example.procrastination_detection.ui
+package com.example.procrastination_detection.ui.profile
 
 import androidx.compose.animation.*
 import androidx.compose.foundation.background
@@ -19,6 +19,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.DialogProperties
 import com.example.procrastination_detection.domain.model.EscalationLevel
 import com.example.procrastination_detection.domain.model.FocusProfile
 
@@ -221,7 +222,7 @@ fun EditProfileDialog(
     AlertDialog(
         onDismissRequest = onDismiss,
         modifier = Modifier.fillMaxWidth(0.9f).fillMaxHeight(0.85f),
-        properties = androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false),
+        properties = DialogProperties(usePlatformDefaultWidth = false),
         title = { Text("Edit Profile: ${profile.name}") },
         text = {
             LazyColumn(modifier = Modifier.fillMaxWidth()) {

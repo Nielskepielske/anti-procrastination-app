@@ -1,15 +1,15 @@
-package com.example.procrastination_detection.ui
+package com.example.procrastination_detection.ui.analytics
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.procrastination_detection.data.local.AppUsageDao
-import com.example.procrastination_detection.data.local.AppUsageEntity
 import com.example.procrastination_detection.data.local.HourlyCount
 import com.example.procrastination_detection.data.local.SensorEventDao
 import com.example.procrastination_detection.domain.dictionary.DictionaryEngine
 import com.example.procrastination_detection.domain.model.Category
 import com.example.procrastination_detection.domain.model.WindowData
 import kotlinx.coroutines.flow.*
+import kotlin.time.Clock
 
 data class UsageRow(
     val processName: String,
@@ -72,5 +72,5 @@ class AnalyticsViewModel(
             }.sortedBy { it.dayIndex }
         }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
-    private fun getTodayIndex(): Long = System.currentTimeMillis() / 86_400_000L
+    private fun getTodayIndex(): Long = Clock.System.now().toEpochMilliseconds() / 86_400_000L
 }

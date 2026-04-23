@@ -17,12 +17,12 @@ import com.example.procrastination_detection.domain.trigger.BrowserAnalysisTrigg
 import com.example.procrastination_detection.domain.trigger.TriggerManager
 import com.example.procrastination_detection.engine.BrowserAnalyserEngine
 import com.example.procrastination_detection.helpers.LocalUrlExtractor
-import com.example.procrastination_detection.ui.DashboardViewModel
-import com.example.procrastination_detection.ui.DictionaryViewModel
-import com.example.procrastination_detection.ui.ProfileViewModel
+import com.example.procrastination_detection.ui.analytics.AnalyticsViewModel
+import com.example.procrastination_detection.ui.dashboard.DashboardViewModel
+import com.example.procrastination_detection.ui.dictionary.DictionaryViewModel
+import com.example.procrastination_detection.ui.profile.ProfileViewModel
 import org.koin.core.module.dsl.viewModel
 import org.koin.dsl.module
-import org.koin.plugin.module.dsl.viewModel
 
 val coreModule = module {
     // 1. The Dictionary Engine (Starts empty, rules load later)
@@ -109,6 +109,6 @@ val coreModule = module {
     // Viewmodels
     viewModel { DashboardViewModel(pipeline = get(), sensorManager = get()) }
     viewModel { DictionaryViewModel(dictionaryEngine = get(), ruleRepository = get(), inboxDao = get(), triggerManager = get()) }
-    viewModel { com.example.procrastination_detection.ui.ProfileViewModel(sensorManager = get(), interventionManager = get(), focusProfileRepository = get()) }
-    viewModel { com.example.procrastination_detection.ui.AnalyticsViewModel(appUsageDao = get(), sensorEventDao = get(), dictionaryEngine = get()) }
+    viewModel { ProfileViewModel(sensorManager = get(), interventionManager = get(), focusProfileRepository = get()) }
+    viewModel { AnalyticsViewModel(appUsageDao = get(), sensorEventDao = get(), dictionaryEngine = get()) }
 }

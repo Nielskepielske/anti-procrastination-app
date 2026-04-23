@@ -1,14 +1,11 @@
 package com.example.procrastination_detection
 
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.List
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
@@ -16,25 +13,15 @@ import androidx.compose.material3.Text
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
-import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
-import com.example.procrastination_detection.engine.TrackingEngine
-import com.example.procrastination_detection.helpers.getMyAppProcessName
-import com.example.procrastination_detection.interfaces.AppRepository
 import com.example.procrastination_detection.navigation.Screen
-import com.example.procrastination_detection.pages.home.AppListViewModel
-import com.example.procrastination_detection.pages.home.HomeScreen
-import com.example.procrastination_detection.pages.library.AppLibraryScreen
-import com.example.procrastination_detection.pages.library.AppLibraryViewModel
-import com.example.procrastination_detection.pages.rule.RulesManagerScreen
-import com.example.procrastination_detection.pages.rule.RulesViewModel
-import com.example.procrastination_detection.ui.DashboardScreen
-import com.example.procrastination_detection.ui.DictionaryHubScreen
-import com.example.procrastination_detection.ui.ProfileManagerScreen
-import com.example.procrastination_detection.ui.AnalyticsScreen
+import com.example.procrastination_detection.ui.dashboard.DashboardScreen
+import com.example.procrastination_detection.ui.dictionary.DictionaryHubScreen
+import com.example.procrastination_detection.ui.profile.ProfileManagerScreen
+import com.example.procrastination_detection.ui.analytics.AnalyticsScreen
 import com.example.procrastination_detection.ui.theme.AppTheme
 import org.koin.compose.viewmodel.koinViewModel
 

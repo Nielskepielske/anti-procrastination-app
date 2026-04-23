@@ -1,4 +1,4 @@
-package com.example.procrastination_detection.ui
+package com.example.procrastination_detection.ui.dictionary
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope

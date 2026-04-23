@@ -1,6 +1,5 @@
-package com.example.procrastination_detection.ui
+package com.example.procrastination_detection.ui.dashboard
 
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Arrangement.Center
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer

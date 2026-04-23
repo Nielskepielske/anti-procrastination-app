@@ -17,6 +17,7 @@ koinCore = "4.2.1"
 kotlin = "2.3.0"
 kotlinx-coroutines = "1.10.2"
 kotlinxCoroutinesTest = "1.10.2"
+kotlinxDatetime = "0.7.1"
 kotlinxSerializationJson = "1.10.0"
 lifecycleViewmodelCompose = "2.8.0"
 material3 = "1.10.0-alpha05"
@@ -30,8 +31,10 @@ tess4jVersion = "5.18.0"
 textRecognition = "16.0.1"
 datastore = "1.1.2"
 kotlinx-serialization = "1.10.0"
+workRuntime = "2.11.2"
 
 [libraries]
+androidx-work-runtime = { module = "androidx.work:work-runtime", version.ref = "workRuntime" }
 constraintlayout-compose-multiplatform = { module = "tech.annexflow.compose:constraintlayout-compose-multiplatform", version.ref = "constraintlayoutComposeMultiplatform" }
 jetbrains-kotlinx-coroutines-test = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-test", version.ref = "kotlinxCoroutinesTest" }
 koin-compose-viewmodel = { module = "io.insert-koin:koin-compose-viewmodel", version.ref = "koinCore" }
@@ -54,6 +57,7 @@ compose-ui = { module = "org.jetbrains.compose.ui:ui", version.ref = "composeMul
 compose-components-resources = { module = "org.jetbrains.compose.components:components-resources", version.ref = "composeMultiplatform" }
 compose-uiToolingPreview = { module = "org.jetbrains.compose.ui:ui-tooling-preview", version.ref = "composeMultiplatform" }
 kotlinx-coroutinesSwing = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-swing", version.ref = "kotlinx-coroutines" }
+kotlinx-datetime = { module = "org.jetbrains.kotlinx:kotlinx-datetime", version.ref = "kotlinxDatetime" }
 kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "kotlinxSerializationJson" }
 lifecycle-viewmodel-compose-v280 = { module = "org.jetbrains.androidx.lifecycle:lifecycle-viewmodel-compose", version.ref = "lifecycleViewmodelCompose" }
 material-icons-extended = { module = "org.jetbrains.compose.material:material-icons-extended", version.ref = "materialIconsExtended" }

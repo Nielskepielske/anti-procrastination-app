@@ -4,10 +4,20 @@ import com.example.procrastination_detection.domain.dictionary.DictionaryEngine
 import com.example.procrastination_detection.domain.discovery.DiscoveryEngine
 import com.example.procrastination_detection.domain.discovery.DiscoveryStrategy
 import com.example.procrastination_detection.domain.discovery.KeywordMatcherStrategy
+import com.example.procrastination_detection.domain.event.SensorPayload
 import com.example.procrastination_detection.domain.intervention.InterventionManager
 import com.example.procrastination_detection.domain.intervention.InterventionStrategy
 import com.example.procrastination_detection.domain.pipeline.EventPipeline
 import com.example.procrastination_detection.domain.pipeline.FocusTimerEngine
+import com.example.procrastination_detection.domain.pipeline.compaction.CompactionEngine
+import com.example.procrastination_detection.domain.pipeline.compaction.strategies.AppSwitchCompactionStrategy
+import com.example.procrastination_detection.domain.pipeline.compaction.strategies.MouseCompactionStrategy
+import com.example.procrastination_detection.domain.pipeline.resampling.DistractionAverageReducer
+import com.example.procrastination_detection.domain.pipeline.resampling.SwitchCountReducer
+import com.example.procrastination_detection.domain.pipeline.resampling.WindowedReducer
+import com.example.procrastination_detection.domain.pipeline.stream.SlidingWindowAnalyzer
+import com.example.procrastination_detection.domain.pipeline.stream.StreamProcessingEngine
+import com.example.procrastination_detection.domain.pipeline.stream.TabHoppingAnalyzer
 import com.example.procrastination_detection.domain.repository.IRuleRepository
 import com.example.procrastination_detection.domain.repository.RuleRepository
 import com.example.procrastination_detection.domain.repository.SensorEventRepository
@@ -18,6 +28,9 @@ import com.example.procrastination_detection.domain.trigger.TriggerManager
 import com.example.procrastination_detection.engine.BrowserAnalyserEngine
 import com.example.procrastination_detection.helpers.LocalUrlExtractor
 import com.example.procrastination_detection.ui.analytics.AnalyticsViewModel
+import com.example.procrastination_detection.ui.analytics.FlexibleAnalyticsViewModel
+import com.example.procrastination_detection.ui.analytics.strategy.DashboardDataStrategy
+import com.example.procrastination_detection.ui.analytics.strategy.SwitchFrequencyStrategy
 import com.example.procrastination_detection.ui.dashboard.DashboardViewModel
 import com.example.procrastination_detection.ui.dictionary.DictionaryViewModel
 import com.example.procrastination_detection.ui.profile.ProfileViewModel
@@ -39,7 +52,8 @@ val coreModule = module {
     single {
         EventPipeline(
             dictionaryEngine = get(),
-            repository = get()
+            repository = get(),
+            streamEngine = get()
         )
     }
 
@@ -111,4 +125,32 @@ val coreModule = module {
     viewModel { DictionaryViewModel(dictionaryEngine = get(), ruleRepository = get(), inboxDao = get(), triggerManager = get()) }
     viewModel { ProfileViewModel(sensorManager = get(), interventionManager = get(), focusProfileRepository = get()) }
     viewModel { AnalyticsViewModel(appUsageDao = get(), sensorEventDao = get(), dictionaryEngine = get()) }
+    viewModel { FlexibleAnalyticsViewModel(strategies = getAll<DashboardDataStrategy>().toSet()) }
+
+
+    // Compaction
+    // Here all strategies
+    factory { MouseCompactionStrategy() }
+    factory { AppSwitchCompactionStrategy() }
+
+    // Build the engine
+    single {
+        val strategies = setOf(
+            get<MouseCompactionStrategy>(),
+            get<AppSwitchCompactionStrategy>()
+        )
+        CompactionEngine(strategies)
+    }
+
+    factory { SwitchCountReducer() }
+    factory { DistractionAverageReducer() }
+    single<DashboardDataStrategy> { SwitchFrequencyStrategy(repository = get(), reducer = get()) }
+
+    // Streaming
+    single<SlidingWindowAnalyzer<out SensorPayload>> { TabHoppingAnalyzer() }
+    single {
+        StreamProcessingEngine(analyzers = getAll<SlidingWindowAnalyzer<out SensorPayload>>().toSet())
+    }
+
+
 }

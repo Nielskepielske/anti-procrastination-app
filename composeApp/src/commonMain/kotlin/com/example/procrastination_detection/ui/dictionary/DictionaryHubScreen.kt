@@ -17,8 +17,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.example.procrastination_detection.data.local.InboxEntity
-import com.example.procrastination_detection.data.local.RuleEntity
+import com.example.procrastination_detection.data.local.entity.InboxEntity
+import com.example.procrastination_detection.data.local.entity.RuleEntity
 import com.example.procrastination_detection.domain.model.Category
 import com.example.procrastination_detection.domain.repository.RuleType
 import com.example.procrastination_detection.domain.trigger.ActionTrigger

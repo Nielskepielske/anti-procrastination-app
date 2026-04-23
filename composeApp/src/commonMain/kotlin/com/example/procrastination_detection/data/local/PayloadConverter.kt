@@ -1,6 +1,7 @@
 package com.example.procrastination_detection.data.local
 
 import androidx.room.TypeConverter
+import com.example.procrastination_detection.domain.event.AggregatedPayload
 import com.example.procrastination_detection.domain.event.SensorPayload
 import com.example.procrastination_detection.domain.model.Category
 import kotlinx.serialization.json.Json
@@ -43,5 +44,15 @@ class PayloadConverter {
         } catch (e: Exception) {
             com.example.procrastination_detection.domain.model.EscalationLevel.GENTLE
         }
+    }
+
+    @TypeConverter
+    fun fromAggregatedPayload(payload: AggregatedPayload): String {
+        return json.encodeToString(payload)
+    }
+
+    @TypeConverter
+    fun toAggregatedPayload(jsonString: String): AggregatedPayload {
+        return json.decodeFromString<AggregatedPayload>(jsonString)
     }
 }

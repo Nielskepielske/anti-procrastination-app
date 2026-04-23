@@ -1,7 +1,7 @@
 package com.example.procrastination_detection.domain.discovery
 
-import com.example.procrastination_detection.data.local.InboxDao
-import com.example.procrastination_detection.data.local.InboxEntity
+import com.example.procrastination_detection.data.local.dao.InboxDao
+import com.example.procrastination_detection.data.local.entity.InboxEntity
 import com.example.procrastination_detection.domain.event.ProcessedEvent
 import com.example.procrastination_detection.domain.event.SensorPayload
 import com.example.procrastination_detection.domain.model.Category
@@ -9,7 +9,6 @@ import com.example.procrastination_detection.domain.pipeline.EventPipeline
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import kotlin.time.Clock
 
 /**
  * The DiscoveryEngine is the gatekeeper for unknown applications and websites.

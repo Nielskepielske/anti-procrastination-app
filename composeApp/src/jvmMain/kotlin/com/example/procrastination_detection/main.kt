@@ -30,11 +30,13 @@ import com.example.procrastination_detection.di.initKoin
 import com.example.procrastination_detection.domain.intervention.InterventionStrategy
 import com.example.procrastination_detection.domain.pipeline.EventPipeline
 import com.example.procrastination_detection.domain.pipeline.FocusTimerEngine
+import com.example.procrastination_detection.domain.pipeline.compaction.CompactionScheduler
 import com.example.procrastination_detection.domain.sensor.BehaviorSensor
 import com.example.procrastination_detection.domain.sensor.SensorManager
 import com.example.procrastination_detection.engine.FocusEnforcerEngine
 import com.example.procrastination_detection.factories.WindowStyleManagerFactory
 import com.example.procrastination_detection.intervention.LinuxNotificationStrategy
+import com.example.procrastination_detection.platform.background.DesktopCompactionScheduler
 import com.example.procrastination_detection.repositories.LocalAppRepository
 import com.example.procrastination_detection.sensor.LinuxWindowTracker
 import com.mmk.kmpnotifier.extensions.composeDesktopResourcesPath
@@ -75,6 +77,15 @@ fun main() = application {
 
         // Add Linux NotificationStrategy to the toolbox
         single<InterventionStrategy> { LinuxNotificationStrategy() }
+
+        // Compaction Scheduler
+        single<CompactionScheduler> {
+            DesktopCompactionScheduler(
+                engine = get(),
+                compactionDao = get(),
+                applicationScope = get()
+            )
+        }
     }
 
     // Start the core brain

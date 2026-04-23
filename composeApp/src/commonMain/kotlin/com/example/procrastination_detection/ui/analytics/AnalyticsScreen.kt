@@ -17,7 +17,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.example.procrastination_detection.domain.model.Category
 import androidx.compose.foundation.lazy.LazyColumn
-import com.example.procrastination_detection.data.local.HourlyCount
+import com.example.procrastination_detection.data.local.dao.HourlyCount
 
 @Composable
 fun AnalyticsScreen(viewModel: AnalyticsViewModel) {

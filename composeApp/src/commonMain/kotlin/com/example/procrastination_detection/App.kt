@@ -22,6 +22,7 @@ import com.example.procrastination_detection.ui.dashboard.DashboardScreen
 import com.example.procrastination_detection.ui.dictionary.DictionaryHubScreen
 import com.example.procrastination_detection.ui.profile.ProfileManagerScreen
 import com.example.procrastination_detection.ui.analytics.AnalyticsScreen
+import com.example.procrastination_detection.ui.analytics.FlexibleAnalyticsScreen
 import com.example.procrastination_detection.ui.theme.AppTheme
 import org.koin.compose.viewmodel.koinViewModel
 
@@ -80,7 +81,8 @@ fun App() {
           ProfileManagerScreen(viewModel = koinViewModel())
         }
         composable<Screen.Analytics> {
-          AnalyticsScreen(viewModel = koinViewModel())
+//          AnalyticsScreen(viewModel = koinViewModel())
+          FlexibleAnalyticsScreen(viewModel = koinViewModel())
         }
       }
     }

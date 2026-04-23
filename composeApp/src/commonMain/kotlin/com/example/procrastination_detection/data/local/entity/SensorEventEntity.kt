@@ -1,9 +1,8 @@
-package com.example.procrastination_detection.data.local
+package com.example.procrastination_detection.data.local.entity
 
 import androidx.room.Entity
 import androidx.room.PrimaryKey
 import com.example.procrastination_detection.domain.event.SensorPayload
-
 
 @Entity(tableName = "sensor_events")
 data class SensorEventEntity(

@@ -5,6 +5,8 @@ import com.example.procrastination_detection.domain.dictionary.CategoryMatch
 import com.example.procrastination_detection.domain.event.ProcessedEvent
 import com.example.procrastination_detection.domain.event.SensorPayload
 import com.example.procrastination_detection.domain.model.Category
+import com.example.procrastination_detection.domain.pipeline.stream.StreamInsight
+import com.example.procrastination_detection.domain.pipeline.stream.StreamProcessingEngine
 import com.example.procrastination_detection.domain.repository.SensorEventRepository
 import com.example.procrastination_detection.domain.trigger.ActionTrigger
 import com.example.procrastination_detection.models.db.Process
@@ -20,7 +22,8 @@ import kotlin.time.Clock
 
 class EventPipeline (
     private val dictionaryEngine : DictionaryEngine,
-    private val repository: SensorEventRepository
+    private val repository: SensorEventRepository,
+    private val streamEngine: StreamProcessingEngine
     ){
     // 1. The Intake Pipe (Sensors push data here)
     // extraBufferCapacity ensures we don't drop events if the DB is momentarily slow
@@ -32,6 +35,10 @@ class EventPipeline (
     // 2. The Broadcast Pipe (Timers, UI, and Interventions listen here)
     private val _processedEvents = MutableSharedFlow<ProcessedEvent>(extraBufferCapacity = 64)
     val processedEvents: SharedFlow<ProcessedEvent> = _processedEvents.asSharedFlow()
+
+    // A new flow to broadcast real-time anomalies to the UI or notification system
+    private val _streamInsights = MutableSharedFlow<StreamInsight>(extraBufferCapacity = 10)
+    val streamInsights = _streamInsights.asSharedFlow()
 
     // Adding something to watch the current state
     private val _currentState = MutableStateFlow<ProcessedEvent?>(null)
@@ -90,6 +97,16 @@ class EventPipeline (
                 // -------------------------------------------
 
                 println("Category: $category")
+
+                // 2. LIVE SLIDING WINDOW ANALYSIS
+                val insight = streamEngine.processLiveEvent(payload)
+                if (insight != null) {
+                    println("🚨 Insight Detected: ${insight.title}")
+                    _streamInsights.emit(insight)
+
+                    // Note: You could also save this insight to a new DB table here
+                    // if you want to show "Anomalies Over Time" on your dashboard!
+                }
 
                 // Create the processed wrapper
                 val processedEvent = ProcessedEvent(

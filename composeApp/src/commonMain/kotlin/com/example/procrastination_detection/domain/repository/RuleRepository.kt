@@ -1,7 +1,7 @@
 package com.example.procrastination_detection.domain.repository
 
 import com.example.procrastination_detection.data.local.AppDatabase
-import com.example.procrastination_detection.data.local.RuleEntity
+import com.example.procrastination_detection.data.local.entity.RuleEntity
 import com.example.procrastination_detection.domain.dictionary.*
 import com.example.procrastination_detection.domain.model.Category
 import com.example.procrastination_detection.domain.trigger.TriggerManager

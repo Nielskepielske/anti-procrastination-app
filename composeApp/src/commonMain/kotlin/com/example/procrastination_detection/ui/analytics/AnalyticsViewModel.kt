@@ -2,9 +2,9 @@ package com.example.procrastination_detection.ui.analytics
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.procrastination_detection.data.local.AppUsageDao
-import com.example.procrastination_detection.data.local.HourlyCount
-import com.example.procrastination_detection.data.local.SensorEventDao
+import com.example.procrastination_detection.data.local.dao.AppUsageDao
+import com.example.procrastination_detection.data.local.dao.HourlyCount
+import com.example.procrastination_detection.data.local.dao.SensorEventDao
 import com.example.procrastination_detection.domain.dictionary.DictionaryEngine
 import com.example.procrastination_detection.domain.model.Category
 import com.example.procrastination_detection.domain.model.WindowData

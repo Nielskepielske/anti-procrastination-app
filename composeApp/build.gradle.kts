@@ -45,6 +45,9 @@ kotlin {
 
             // Text recognition
             implementation(libs.text.recognition)
+
+            // Work manager
+            implementation(libs.androidx.work.runtime)
         }
         commonMain.dependencies {
             implementation(libs.compose.runtime)
@@ -55,6 +58,7 @@ kotlin {
             implementation(libs.compose.uiToolingPreview)
             implementation(libs.androidx.lifecycle.viewmodelCompose)
             implementation(libs.androidx.lifecycle.runtimeCompose)
+            implementation(libs.kotlinx.datetime)
             // Room
             implementation(libs.androidx.room.runtime)
             implementation(libs.androidx.sqlite.bundled)

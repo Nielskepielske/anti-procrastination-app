@@ -1,7 +1,7 @@
 package com.example.procrastination_detection.domain.pipeline
 
-import com.example.procrastination_detection.data.local.AppUsageDao
-import com.example.procrastination_detection.data.local.AppUsageEntity
+import com.example.procrastination_detection.data.local.dao.AppUsageDao
+import com.example.procrastination_detection.data.local.entity.AppUsageEntity
 import com.example.procrastination_detection.domain.event.SensorPayload
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.delay

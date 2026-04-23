@@ -1,8 +1,9 @@
-package com.example.procrastination_detection.data.local
+package com.example.procrastination_detection.data.local.dao
 
 import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.Query
+import com.example.procrastination_detection.data.local.entity.SensorEventEntity
 
 @Dao
 interface SensorEventDao {
@@ -31,6 +32,10 @@ interface SensorEventDao {
     // Total count of a specific event type for a time range
     @Query("SELECT COUNT(*) FROM sensor_events WHERE payloadType = :payloadType AND timestamp BETWEEN :start AND :end")
     suspend fun getEventCountForRange(payloadType: String, start: Long, end: Long): Int
+
+    // Fetches raw 5-second events for a specific time window
+    @Query("SELECT * FROM sensor_events WHERE timestamp BETWEEN :start AND :end ORDER BY timestamp ASC")
+    suspend fun getEventsBetween(start: Long, end: Long): List<SensorEventEntity>
 }
 
 /** Lightweight projection used for the switch-frequency chart. */

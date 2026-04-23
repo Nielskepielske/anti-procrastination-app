@@ -2,9 +2,9 @@ package com.example.procrastination_detection.ui.dictionary
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.procrastination_detection.data.local.InboxDao
-import com.example.procrastination_detection.data.local.InboxEntity
-import com.example.procrastination_detection.data.local.RuleEntity
+import com.example.procrastination_detection.data.local.dao.InboxDao
+import com.example.procrastination_detection.data.local.entity.InboxEntity
+import com.example.procrastination_detection.data.local.entity.RuleEntity
 import com.example.procrastination_detection.domain.dictionary.DictionaryEngine
 import com.example.procrastination_detection.domain.model.Category
 import com.example.procrastination_detection.domain.repository.IRuleRepository

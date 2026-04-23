@@ -1,13 +1,12 @@
 package com.example.procrastination_detection.domain.repository
 
 import com.example.procrastination_detection.data.local.ActiveProfileStore
-import com.example.procrastination_detection.data.local.FocusProfileDao
-import com.example.procrastination_detection.data.local.FocusProfileEntity
+import com.example.procrastination_detection.data.local.dao.FocusProfileDao
+import com.example.procrastination_detection.data.local.entity.FocusProfileEntity
 import com.example.procrastination_detection.domain.model.EscalationLevel
 import com.example.procrastination_detection.domain.model.FocusProfile
 import com.example.procrastination_detection.domain.sensor.SensorManager
 import kotlinx.coroutines.flow.*
-import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 
 class FocusProfileRepository(

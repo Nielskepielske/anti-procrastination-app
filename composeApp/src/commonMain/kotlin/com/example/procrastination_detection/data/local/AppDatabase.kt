@@ -27,7 +27,7 @@ import com.example.procrastination_detection.data.local.entity.SensorEventEntity
         InboxEntity::class,
         FocusProfileEntity::class
     ],
-    version = 6 // Bumped from 5 to 6
+    version = 8 // Bumped from 7 to 8 due to composite primary keys in TieredSensorEntities
 )
 @TypeConverters(PayloadConverter::class)
 abstract class AppDatabase : RoomDatabase() {

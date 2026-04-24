@@ -74,6 +74,7 @@ val coreModule = module {
 
     single { get<com.example.procrastination_detection.data.local.AppDatabase>().focusProfileDao() }
     single { get<com.example.procrastination_detection.data.local.AppDatabase>().sensorEventDao() }
+    single { get<com.example.procrastination_detection.data.local.AppDatabase>().compactionDao() }
     single { com.example.procrastination_detection.data.local.ActiveProfileStore() }
     single {
         com.example.procrastination_detection.domain.repository.FocusProfileRepository(
@@ -125,7 +126,16 @@ val coreModule = module {
     viewModel { DictionaryViewModel(dictionaryEngine = get(), ruleRepository = get(), inboxDao = get(), triggerManager = get()) }
     viewModel { ProfileViewModel(sensorManager = get(), interventionManager = get(), focusProfileRepository = get()) }
     viewModel { AnalyticsViewModel(appUsageDao = get(), sensorEventDao = get(), dictionaryEngine = get()) }
-    viewModel { FlexibleAnalyticsViewModel(strategies = getAll<DashboardDataStrategy>().toSet()) }
+    single { com.example.procrastination_detection.data.local.AnalyticsConfigStore() }
+    viewModel { 
+        val strategies = setOf<DashboardDataStrategy>(
+            get<SwitchFrequencyStrategy>(),
+            get<com.example.procrastination_detection.ui.analytics.strategy.DistractionAverageStrategy>(),
+            get<com.example.procrastination_detection.ui.analytics.strategy.TopElementsStrategy>(),
+            get<com.example.procrastination_detection.ui.analytics.strategy.IntensityStrategy>()
+        )
+        FlexibleAnalyticsViewModel(strategies = strategies, sensorManager = get(), configStore = get()) 
+    }
 
 
     // Compaction
@@ -144,7 +154,10 @@ val coreModule = module {
 
     factory { SwitchCountReducer() }
     factory { DistractionAverageReducer() }
-    single<DashboardDataStrategy> { SwitchFrequencyStrategy(repository = get(), reducer = get()) }
+    single { SwitchFrequencyStrategy(repository = get(), reducer = get()) }
+    single { com.example.procrastination_detection.ui.analytics.strategy.DistractionAverageStrategy(repository = get(), dictionaryEngine = get(), reducer = get()) }
+    single { com.example.procrastination_detection.ui.analytics.strategy.TopElementsStrategy(appUsageDao = get()) }
+    single { com.example.procrastination_detection.ui.analytics.strategy.IntensityStrategy(sensorEventDao = get()) }
 
     // Streaming
     single<SlidingWindowAnalyzer<out SensorPayload>> { TabHoppingAnalyzer() }

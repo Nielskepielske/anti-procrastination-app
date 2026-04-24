@@ -36,3 +36,7 @@ To avoid the infamous "schema rot" issue as the project evolves, the `Room` SQli
 ## UI Strategy
 
 Using **Compose Multiplatform** integrated directly with Jetpack Navigation, the UI operates mostly decoupled. The ViewModels simply subscribe to either local `Flows` hosted by the `DictionaryEngine`/`SensorManager` to react to configuration states, or attach themselves to the `EventPipeline` for real-time reactivity (such as showing the tracked application immediately upon focus change).
+
+## Analytics Processing Strategy
+
+Our data analytics are handled by a multi-pillar processing architecture (Stream Processing for live anomalies, Batch Processing for compaction, and Presentation Processing for UI Math). See [Analytics & Processing Architecture](analytics_architecture.md) for a deep-dive into how data flows from rapid sensors into scalable visuals.

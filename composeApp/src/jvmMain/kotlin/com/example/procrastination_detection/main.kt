@@ -37,7 +37,7 @@ import com.example.procrastination_detection.engine.FocusEnforcerEngine
 import com.example.procrastination_detection.factories.WindowStyleManagerFactory
 import com.example.procrastination_detection.intervention.LinuxNotificationStrategy
 import com.example.procrastination_detection.platform.background.DesktopCompactionScheduler
-import com.example.procrastination_detection.repositories.LocalAppRepository
+//import com.example.procrastination_detection.repositories.LocalAppRepository
 import com.example.procrastination_detection.sensor.LinuxWindowTracker
 import com.mmk.kmpnotifier.extensions.composeDesktopResourcesPath
 import com.mmk.kmpnotifier.notification.NotificationImage
@@ -113,6 +113,9 @@ fun main() = application {
 
     val analyticsTimerEngine = koin.get<com.example.procrastination_detection.domain.pipeline.AnalyticsTimerEngine>()
     analyticsTimerEngine.startListening()
+
+    val compactionScheduler = koin.get<CompactionScheduler>()
+    compactionScheduler.schedulePeriodicCompaction()
 
     val discoveryEngine = koin.get<com.example.procrastination_detection.domain.discovery.DiscoveryEngine>()
     discoveryEngine.startListening()

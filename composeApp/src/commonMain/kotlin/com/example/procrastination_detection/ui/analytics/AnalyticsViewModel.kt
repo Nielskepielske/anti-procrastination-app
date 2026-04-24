@@ -55,7 +55,7 @@ class AnalyticsViewModel(
     val appSwitchesPerHour: StateFlow<List<HourlyCount>> = flow {
         val startOfDay = todayIndex * 86_400_000L
         val endOfDay = startOfDay + 86_399_999L
-        emit(sensorEventDao.getEventCountsPerHour("APP_SWITCH", startOfDay, endOfDay))
+        emit(sensorEventDao.getEventCountsPerHour("APP_SWITCH", "WINDOW_TRACKER", startOfDay, endOfDay))
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     val weekSummary: StateFlow<List<DaySummary>> = appUsageDao.getUsageForRange(todayIndex - 6, todayIndex)

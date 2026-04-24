@@ -187,4 +187,52 @@ All notable architectural and implementation changes are recorded here, grouped 
 | `docs/project_philosophy_and_roadmap.md` | **NEW** | Core mission doc. Explains the "procrastination as signal" philosophy, the Escalation Matrix (gentle → aggressive opt-in), local privacy guarantees, and the 6-phase roadmap. |
 | `docs/system_architecture_and_db.md` | **NEW** | Technical deep-dive into the unidirectional data flow (Sensor → Pipeline → Analysis → Intervention), directory logic, and all Room DB schemas with rationale for design choices. |
 | `docs/event_pipeline_data_flow.md` | **NEW** | Detailed walkthrough of the reactive SharedFlow pipeline: intake, filtration, DB offloading, and broadcasting. |
-| `docs/features_and_architecture.md` | **NEW** | KMP abstraction layer explanation, Koin plugin infrastructure, and sensor/intervention scalability patterns. |
+| `docs/analytics_architecture.md` | **NEW** | Details the three pillars of data processing, batch/stream logic, and Koin-based plug-and-play data UI architecture. |
+
+---
+
+## Phase 7 — High-Fidelity Analytics & KoalaPlot Integration (2026-04-24)
+
+**Problem**: The custom Canvas-based charts were visually simplistic, lacked proper scaling/axis labels, and didn't support merging multiple data series into a single graph. Data fetching was also unoptimized, relying on in-memory filtering which would slow down as the database grew.
+
+**Solution**: Integrated the **KoalaPlot** charting library for professional-grade visualizations and re-engineered the data pipeline to support strict strategy-sensor coupling and native database-level filtering.
+
+| File | Status | Reason |
+|---|---|---|
+| `ui/analytics/components/ChartComponents.kt` | **REPLACED** | Full rewrite of charting logic. Now uses `XYGraph` and `LinePlot` from the KoalaPlot library. Support for explicit type disambiguation, dynamic legends, and multi-series rendering. |
+| `ui/analytics/strategy/DashboardDataStrategy.kt` | **MODIFIED** | Added `chartType: KClass` and `compatibleEventTypes: Set<String>?`. This enforces structural integrity by allowing the UI to programmatically filter compatible sensors and mergeable blocks. |
+| `ui/analytics/FlexibleAnalyticsViewModel.kt` | **MODIFIED** | Implemented `sensorsForStrategy()` and `canCombine()` logic. The dashboard now reactively updates available sensors based on the selected metric and prevents invalid block merging. |
+| `data/local/entity/TieredSensorEntities.kt` | **MODIFIED** | Updated `HourlySensorEventEntity` and `DailySensorEventEntity` to use **composite primary keys** `(hourTimestamp, sensorId)`. Prevents data loss when multiple sensors have events in the same time bucket. |
+| `domain/repository/SensorEventRepository.kt` | **MODIFIED** | Updated `getOptimizedEventsForRange()` to accept a nullable `sensorId`. This moves data filtering from the Kotlin layer to the SQLite layer for significant performance gains. |
+| `data/local/dao/SensorEventDao.kt` | **MODIFIED** | Updated `getEventsBetween()` query to support optional `sensorId` filtering using the `(:sensorId IS NULL OR sensorId = :sensorId)` pattern. |
+| `data/local/dao/CompactionDao.kt` | **MODIFIED** | Updated hourly and daily retrieval queries to support native `sensorId` filtering. |
+| `data/local/AppDatabase.kt` | **MODIFIED** | Version bumped 7→8. Documented the schema change regarding composite keys. |
+| `database/Database.kt` | **MODIFIED** | Enabled `fallbackToDestructiveMigration(true)` in the Room builder to ensure stable development iterations during schema changes. |
+| `ui/analytics/FlexibleAnalyticsScreen.kt` | **MODIFIED** | Updated `AddBlockDialog` to utilize the new strategy-aware filtering and added visual gates for the merging flow. |
+
+**Optimization & Integrity**:
+- **KoalaPlot Stability**: Resolved overload resolution ambiguity in `XYGraph` by providing explicit type parameters and Title lambdas, ensuring stable builds in KMP.
+- **Data Routing**: Cleaned up strategy implementations (`SwitchFrequency`, `DistractionAverage`) to utilize the new optimized repository methods, removing redundant in-memory `.filter` calls.
+- **UX Polish**: Handled the "All Sensors" selection logic to correctly pass `null` to the repository, enabling global aggregation when requested.
+
+---
+
+## Phase 8 — Advanced Chart Interactivity & Combined Management (2026-04-24)
+
+**Problem**: While charts were rendering, they were static and difficult to compare. Users couldn't see exact values on hover, couldn't edit existing charts (only delete), and combining charts was a "one-way" operation that often resulted in misaligned timelines or loading loops.
+
+**Solution**: Implemented a comprehensive interactivity layer and a sophisticated combined chart management system with synchronized data fetching.
+
+| File | Status | Reason |
+|---|---|---|
+| `ui/analytics/FlexibleAnalyticsViewModel.kt` | **MODIFIED** | Added `updateChildInCombined` and `removeChildFromCombined`. Implemented **Synchronized Fetching**: all sensors in a combined block now use a shared `(start, end)` window to ensure perfect timeline alignment. |
+| `ui/analytics/FlexibleAnalyticsScreen.kt` | **MODIFIED** | Implemented `EditCombinedBlockDialog` for granular control. Refactored `ColorPicker` into a reusable component. Added `XYGraph` hover interaction logic for data value inspection. |
+| `ui/analytics/components/ChartComponents.kt` | **MODIFIED** | Updated `LineChartComposable` to support per-series custom colors and dynamic tooltips. |
+| `ui/analytics/strategy/IntensityStrategy.kt` | **MODIFIED** | Standardized to use `TimeSeriesResampler`. Now aligns perfectly with other strategies (e.g. 60 points for hourly view) instead of using a fixed 20-point count. |
+| `data/local/AnalyticsConfigStore.kt` | **MODIFIED** | Updated serialization to persist custom color hex codes for individual sensors within combined blocks. |
+
+**Key Enhancements**:
+- **Hover Inspection**: Added hover support to `XYGraph` allowing users to see precise values and timestamps for any data point.
+- **Granular Editing**: Users can now change strategies, colors, or remove individual sensors from a combination without deleting the entire block.
+- **Timeline Synchronization**: Fixed the "offset lines" bug by ensuring all sensors in a refresh cycle use the exact same temporal boundaries, aligned to the minute/hour grid.
+- **Dynamic De-combining**: Removing a sensor from a 2-sensor combination now automatically converts the remaining sensor back into a standard `SingleChartBlock`.

@@ -14,8 +14,8 @@ interface SensorEventRepository {
     suspend fun saveEvent(payload: SensorPayload, timestamp: Long)
     suspend fun pruneOldEvents(olderThanTimestamp: Long)
 
-    // NEW: Fetch data optimized for the requested time range
-    suspend fun getOptimizedEventsForRange(start: Long, end: Long): OptimizedDataResult
+    // NEW: Fetch data optimized for the requested time range, with optional sensor filtering
+    suspend fun getOptimizedEventsForRange(start: Long, end: Long, sensorId: String? = null): OptimizedDataResult
 }
 
 
@@ -38,6 +38,7 @@ class SensorEventRepositoryImpl(
         val entity = SensorEventEntity(
             timestamp = timestamp,
             payloadType = payloadType,
+            sensorId = payload.sensorId,
             payload = payload
         )
         database.sensorEventDao().insertEvent(entity)
@@ -47,17 +48,17 @@ class SensorEventRepositoryImpl(
         database.sensorEventDao().deleteEventsBefore(olderThanTimestamp)
     }
 
-    override suspend fun getOptimizedEventsForRange(start: Long, end: Long): OptimizedDataResult {
+    override suspend fun getOptimizedEventsForRange(start: Long, end: Long, sensorId: String?): OptimizedDataResult {
         val duration = end - start
         val oneDayMillis = 86_400_000L
 
         return if (duration <= oneDayMillis) {
-            val rawList = rawDao.getEventsBetween(start, end).map { entity ->
+            val rawList = rawDao.getEventsBetween(start, end, sensorId).map { entity ->
                 Timestamped(timestamp = entity.timestamp, payload = entity.payload)
             }
             OptimizedDataResult.Raw(rawList)
         } else {
-            val aggregatedList = compactionDao.getHourlyEventsBetween(start, end).map { entity ->
+            val aggregatedList = compactionDao.getHourlyEventsBetween(start, end, sensorId).map { entity ->
                 // Map the hourTimestamp to the generic timestamp field
                 Timestamped(timestamp = entity.hourTimestamp, payload = entity.payload)
             }

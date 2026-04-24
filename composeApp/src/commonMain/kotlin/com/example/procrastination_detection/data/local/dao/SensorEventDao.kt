@@ -23,19 +23,25 @@ interface SensorEventDao {
     @Query("""
         SELECT (timestamp / 3600000) AS hourBucket, COUNT(*) AS frequency
         FROM sensor_events
-        WHERE payloadType = :payloadType AND timestamp BETWEEN :start AND :end
+        WHERE payloadType = :payloadType AND sensorId = :sensorId AND timestamp BETWEEN :start AND :end
         GROUP BY hourBucket
         ORDER BY hourBucket ASC
     """)
-    suspend fun getEventCountsPerHour(payloadType: String, start: Long, end: Long): List<HourlyCount>
+    suspend fun getEventCountsPerHour(payloadType: String, sensorId: String, start: Long, end: Long): List<HourlyCount>
 
     // Total count of a specific event type for a time range
-    @Query("SELECT COUNT(*) FROM sensor_events WHERE payloadType = :payloadType AND timestamp BETWEEN :start AND :end")
-    suspend fun getEventCountForRange(payloadType: String, start: Long, end: Long): Int
+    @Query("SELECT COUNT(*) FROM sensor_events WHERE payloadType = :payloadType AND sensorId = :sensorId AND timestamp BETWEEN :start AND :end")
+    suspend fun getEventCountForRange(payloadType: String, sensorId: String, start: Long, end: Long): Int
 
     // Fetches raw 5-second events for a specific time window
-    @Query("SELECT * FROM sensor_events WHERE timestamp BETWEEN :start AND :end ORDER BY timestamp ASC")
-    suspend fun getEventsBetween(start: Long, end: Long): List<SensorEventEntity>
+    // Fetches raw events for a specific time window, optionally filtered by sensorId
+    @Query("""
+        SELECT * FROM sensor_events 
+        WHERE timestamp BETWEEN :start AND :end 
+        AND (:sensorId IS NULL OR sensorId = :sensorId)
+        ORDER BY timestamp ASC
+    """)
+    suspend fun getEventsBetween(start: Long, end: Long, sensorId: String? = null): List<SensorEventEntity>
 }
 
 /** Lightweight projection used for the switch-frequency chart. */

@@ -43,12 +43,15 @@ class CompactionEngine(
 
                 // 4. Wrap it in the new database entity and save
                 if (aggregatedPayload != null) {
-                    val dbPayloadType = typeGroup.first().payloadType // e.g., "APP_SWITCH"
+                    val firstEvent = typeGroup.first()
+                    val dbPayloadType = firstEvent.payloadType // e.g., "APP_SWITCH"
+                    val dbSensorId = firstEvent.sensorId
 
                     compactedResults.add(
                         HourlySensorEventEntity(
                             hourTimestamp = hourTimestamp,
                             payloadType = dbPayloadType,
+                            sensorId = dbSensorId,
                             payload = aggregatedPayload
                         )
                     )

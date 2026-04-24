@@ -12,9 +12,6 @@ import com.example.procrastination_detection.helpers.LocalUrlExtractor
 import com.example.procrastination_detection.interfaces.ConfigRepository
 import com.example.procrastination_detection.interfaces.ProcessRepository
 import com.example.procrastination_detection.interfaces.SessionRepository
-import com.example.procrastination_detection.repositories.local.LocalConfigRepository
-import com.example.procrastination_detection.repositories.local.LocalProcessRepository
-import com.example.procrastination_detection.repositories.local.LocalSessionRepository
 
 class AppContainer(
     private val processDao: ProcessDao,

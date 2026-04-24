@@ -88,6 +88,9 @@ kotlin {
 
             // Serialization
             implementation(libs.kotlinx.serialization.core)
+
+            // Charting
+            implementation("io.github.koalaplot:koalaplot-core:0.7.0")
         }
         commonTest.dependencies {
             implementation(libs.kotlin.test)

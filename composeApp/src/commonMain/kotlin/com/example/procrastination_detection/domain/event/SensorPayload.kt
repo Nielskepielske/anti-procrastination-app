@@ -6,11 +6,13 @@ import kotlinx.serialization.Serializable
 
 @Serializable
 sealed class SensorPayload {
+    abstract val sensorId: String
 
     @Serializable
     @SerialName("app_switch")
     data class AppSwitch(
-        val windowData: WindowData
+        val windowData: WindowData,
+        override val sensorId: String = "unknown_sensor"
     ) : SensorPayload()
 
     /**
@@ -25,14 +27,16 @@ sealed class SensorPayload {
     @Serializable
     @SerialName("title_change")
     data class TitleChange(
-        val windowData: WindowData
+        val windowData: WindowData,
+        override val sensorId: String = "unknown_sensor"
     ) : SensorPayload()
 
     @Serializable
     @SerialName("browser_ocr_context")
     data class BrowserOCRContext(
         val url: String,
-        val windowTitle: String
+        val windowTitle: String,
+        override val sensorId: String = "unknown_sensor"
     ) : SensorPayload()
 
     @Serializable
@@ -40,12 +44,14 @@ sealed class SensorPayload {
     data class MouseMetrics(
         val hoverDurationMillis: Long,
         val clicks: Int,
-        val distanceTraveled: Double
+        val distanceTraveled: Double,
+        override val sensorId: String = "unknown_sensor"
     ) : SensorPayload()
     
     @Serializable
     @SerialName("keyboard_metrics")
     data class KeyboardMetrics(
-        val cadenceWpm: Int
+        val cadenceWpm: Int,
+        override val sensorId: String = "unknown_sensor"
     ) : SensorPayload()
 }

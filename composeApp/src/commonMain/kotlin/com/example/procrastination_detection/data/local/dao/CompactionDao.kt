@@ -35,12 +35,24 @@ interface CompactionDao {
     suspend fun getHourlyEventsOlderThan(cutoffTimestamp: Long): List<HourlySensorEventEntity>
 
     // Fetches aggregated hourly events for a specific time window
-    @Query("SELECT * FROM sensor_events_hourly WHERE hourTimestamp BETWEEN :start AND :end ORDER BY hourTimestamp ASC")
-    suspend fun getHourlyEventsBetween(start: Long, end: Long): List<HourlySensorEventEntity>
+    // Fetches aggregated hourly events for a specific time window
+    @Query("""
+        SELECT * FROM sensor_events_hourly 
+        WHERE hourTimestamp BETWEEN :start AND :end 
+        AND (:sensorId IS NULL OR sensorId = :sensorId)
+        ORDER BY hourTimestamp ASC
+    """)
+    suspend fun getHourlyEventsBetween(start: Long, end: Long, sensorId: String? = null): List<HourlySensorEventEntity>
 
     // Fetches aggregated daily events for a massive time window (e.g., Months/Years)
-    @Query("SELECT * FROM sensor_events_daily WHERE dayTimestamp BETWEEN :start AND :end ORDER BY dayTimestamp ASC")
-    suspend fun getDailyEventsBetween(start: Long, end: Long): List<DailySensorEventEntity>
+    // Fetches aggregated daily events for a massive time window (e.g., Months/Years)
+    @Query("""
+        SELECT * FROM sensor_events_daily 
+        WHERE dayTimestamp BETWEEN :start AND :end 
+        AND (:sensorId IS NULL OR sensorId = :sensorId)
+        ORDER BY dayTimestamp ASC
+    """)
+    suspend fun getDailyEventsBetween(start: Long, end: Long, sensorId: String? = null): List<DailySensorEventEntity>
 
     // ... you can add the daily insertion/deletion methods here later following the same pattern
 }

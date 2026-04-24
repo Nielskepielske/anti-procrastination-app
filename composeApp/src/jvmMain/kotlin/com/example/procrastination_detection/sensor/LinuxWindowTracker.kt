@@ -49,13 +49,13 @@ class LinuxWindowTracker(
                             currentClass != lastProcessName -> {
                                 lastProcessName = currentClass
                                 lastWindowTitle = currentTitle
-                                eventPipeline.emitRawEvent(SensorPayload.AppSwitch(windowData))
+                                eventPipeline.emitRawEvent(SensorPayload.AppSwitch(windowData, sensorId = id))
                                 println("Tracker [AppSwitch]: $currentClass — $currentTitle")
                             }
                             // Case 2: Same app, but the title changed (e.g., new file in IDE, new tab in browser)
                             currentTitle != lastWindowTitle -> {
                                 lastWindowTitle = currentTitle
-                                eventPipeline.emitRawEvent(SensorPayload.TitleChange(windowData))
+                                eventPipeline.emitRawEvent(SensorPayload.TitleChange(windowData, sensorId = id))
                                 println("Tracker [TitleChange]: $currentClass — $currentTitle")
                             }
                             // Case 3: Nothing changed — no emission

@@ -68,7 +68,7 @@ Because the event pipeline accepts generic `SensorPayloads` and the UI is built 
     * **Dashboard:** Live view of the active application and its real-time category.
     * **Dictionary Hub:** Full CRUD for rules (add, edit, delete, approve inbox candidates).
     * **Profile Manager:** Configuration stub — being upgraded to a fully wired screen in Phase 6.
-    * **Analytics:** *(Coming in Phase 6)* — historical usage stats, focus score, and behavioral graphs.
+    * **Analytics:** Flexible dashboard rendering live and historical data through plug-and-play UI strategies (see [Analytics Architecture](analytics_architecture.md)).
 
 ## What are we working on next?
 **Phase 6: Focus Profiles & Analytics Dashboard**

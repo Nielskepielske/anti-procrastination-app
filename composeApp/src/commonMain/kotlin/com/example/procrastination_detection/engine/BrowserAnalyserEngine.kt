@@ -84,7 +84,8 @@ class BrowserAnalyserEngine(
                         pipeline.emitRawEvent(
                             SensorPayload.BrowserOCRContext(
                                 url = url,
-                                windowTitle = currentTitle ?: url
+                                windowTitle = currentTitle ?: url,
+                                sensorId = id
                             )
                         )
                     } else {

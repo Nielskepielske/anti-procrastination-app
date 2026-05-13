@@ -34,5 +34,6 @@ class DashboardViewModel(
 
     fun stopTracking(){
         sensorManager.stopAll()
+        pipeline.resetTriggers()
     }
 }

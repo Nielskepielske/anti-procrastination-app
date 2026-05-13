@@ -50,6 +50,13 @@ class EventPipeline (
         _rawEvents.emit(payload)
     }
 
+    // Call this when tracking pauses to ensure secondary sensors (like OCR) are killed
+    fun resetTriggers() {
+        println("EventPipeline: 🛑 Resetting triggers due to system stop.")
+        activeTrigger?.stop()
+        activeTrigger = null
+    }
+
     // 4. The Processing Loop
     fun start(scope: CoroutineScope){
         scope.launch {

@@ -19,12 +19,15 @@ sealed interface ChartData {
     data class Progress(
         val percentage: Int,
         val label: String,
-        val detail: String
+        val detail: String,
+        val valueSuffix: String = "%",
+        val color: Color? = null
     ) : ChartData
 
     data class Bar(
         val items: List<BarItem>,
-        val maxValue: Float
+        val maxValue: Float,
+        val valueSuffix: String = ""
     ) : ChartData {
         data class BarItem(
             val label: String,
@@ -37,7 +40,8 @@ sealed interface ChartData {
     data class Line(
         val lines: List<LineDataset>,
         val maxPoint: Float,
-        val labels: List<String>
+        val xCategories: List<Long>,
+        val valueSuffix: String = ""
     ) : ChartData {
         data class LineDataset(
             val name: String,

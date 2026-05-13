@@ -54,7 +54,6 @@ class DistractionAverageStrategy(
         val duration = endTime - startTime
         val bucketSize = if (duration <= 3_600_000L) 60_000L else 3_600_000L
 
-        // 2. Bucket the data
         val buckets = TimeSeriesResampler.bucketData(
             data = processedEvents,
             startTime = startTime,
@@ -63,9 +62,17 @@ class DistractionAverageStrategy(
             timestampSelector = { it.timestamp }
         )
 
-        // 3. Reduce each bucket
-        val points = buckets.entries.sortedBy { it.key }.map { (time, items) ->
+        // Sort the buckets once so we guarantee points and labels stay perfectly aligned
+        val sortedEntries = buckets.entries.sortedBy { it.key }
+
+        // 3. Reduce each bucket into points
+        val points = sortedEntries.map { (time, items) ->
             reducer.reduce(time, items)
+        }
+
+        // 4. Generate a label for EACH bucket
+        val xCategories = sortedEntries.map { (time, _) ->
+            time
         }
 
         return ChartData.Line(
@@ -73,12 +80,29 @@ class DistractionAverageStrategy(
                 ChartData.Line.LineDataset(
                     name = "Distraction",
                     points = points,
-                    color = androidx.compose.ui.graphics.Color(0xFFF44336) // Red for distraction
+                    color = androidx.compose.ui.graphics.Color(0xFFF44336)
                 )
             ),
-            maxPoint = 100f, // Percentage max is always 100
-            labels = generateXAxisLabels(startTime, endTime)
+            maxPoint = points.max().coerceAtLeast(5f) ?: 5f,
+            xCategories = xCategories,
+            valueSuffix = "%"
         )
+    }
+
+    // Extracted formatting logic to apply per-bucket
+    private fun formatBucketTimestamp(timestamp: Long, totalDurationMillis: Long): String {
+        val timeZone = TimeZone.currentSystemDefault()
+        val localDateTime = Instant.fromEpochMilliseconds(timestamp).toLocalDateTime(timeZone)
+
+        return if (totalDurationMillis <= 86_400_000L) { // 24 hours or less -> Time format
+            val hour = localDateTime.hour.toString().padStart(2, '0')
+            val minute = localDateTime.minute.toString().padStart(2, '0')
+            "$hour:$minute"
+        } else { // More than 24 hours -> Date format
+            val month = localDateTime.month.name.take(3).lowercase().replaceFirstChar { it.uppercase() }
+            val day = localDateTime.dayOfMonth.toString().padStart(2, '0')
+            "$month $day"
+        }
     }
 
     private fun generateXAxisLabels(startTime: Long, endTime: Long): List<String> {

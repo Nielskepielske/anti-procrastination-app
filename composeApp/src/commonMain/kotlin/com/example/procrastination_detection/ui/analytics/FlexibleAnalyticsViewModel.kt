@@ -60,11 +60,19 @@ class FlexibleAnalyticsViewModel(
      * Both must be SingleChartBlocks of the same chartType.
      */
     fun canCombine(blockId: String, otherId: String): Boolean {
-        val b1 = _blocks.value.find { it.id == blockId } as? SingleChartBlock ?: return false
-        val b2 = _blocks.value.find { it.id == otherId } as? SingleChartBlock ?: return false
-        val type1 = strategyMap[b1.dataType]?.chartType
-        val type2 = strategyMap[b2.dataType]?.chartType
-        return type1 != null && type1 == type2
+        val b1 = _blocks.value.find { it.id == blockId } ?: return false
+        val b2 = _blocks.value.find { it.id == otherId } ?: return false
+
+        val b1Type = when (b1) {
+            is SingleChartBlock -> strategyMap[b1.dataType]?.chartType
+            is CombinedChartBlock -> strategyMap[b1.childBlocks.firstOrNull()?.dataType]?.chartType
+        }
+        val b2Type = when (b2) {
+            is SingleChartBlock -> strategyMap[b2.dataType]?.chartType
+            is CombinedChartBlock -> strategyMap[b2.childBlocks.firstOrNull()?.dataType]?.chartType
+        }
+
+        return b1Type != null && b1Type == b2Type
     }
 
     private val _blocks = MutableStateFlow<List<DashboardBlock>>(emptyList())
@@ -264,6 +272,22 @@ class FlexibleAnalyticsViewModel(
         }
     }
 
+    fun renameBlock(blockId: String, newTitle: String) {
+        val currentBlocks = _blocks.value.toMutableList()
+        val index = currentBlocks.indexOfFirst { it.id == blockId }
+        if (index == -1) return
+
+        val block = currentBlocks[index]
+        if (block is SingleChartBlock) {
+            currentBlocks[index] = block.copy(title = newTitle)
+        } else if (block is CombinedChartBlock) {
+            currentBlocks[index] = block.copy(title = newTitle)
+        }
+        
+        _blocks.value = currentBlocks
+        saveCurrentConfig()
+    }
+
     fun combineBlocks(blockId1: String, blockId2: String, newTitle: String) {
         val currentBlocks = _blocks.value.toMutableList()
         val index1 = currentBlocks.indexOfFirst { it.id == blockId1 }
@@ -406,37 +430,6 @@ class FlexibleAnalyticsViewModel(
         return Pair(start, now)
     }
 
-    // --- Data Fetching (Adapted to return generic ChartData) ---
 
-    private suspend fun fetchFocusScore(start: Long, end: Long): ChartData.Progress {
-        // Replace with actual DB query calculation
-        return ChartData.Progress(percentage = 78, label = "Focus", detail = "+5% vs previous")
-    }
 
-    private suspend fun fetchTopApps(start: Long, end: Long): ChartData.Bar {
-        // Replace with actual DB query calculation
-        return ChartData.Bar(
-            maxValue = 3600f,
-            items = listOf(
-                ChartData.Bar.BarItem("IntelliJ", "45m", 2700f, Color(0xFF4CAF50)),
-                ChartData.Bar.BarItem("Chrome", "15m", 900f, Color(0xFFF44336))
-            )
-        )
-    }
-
-    private suspend fun fetchSwitchFrequency(start: Long, end: Long): ChartData.Line {
-        // Replace with actual DB query calculation
-        val mockPoints = listOf(2f, 15f, 5f, 20f, 10f, 3f)
-        return ChartData.Line(
-            lines = listOf(
-                ChartData.Line.LineDataset(
-                    name = "Switches",
-                    points = mockPoints,
-                    color = Color(0xFF2196F3)
-                )
-            ),
-            maxPoint = mockPoints.maxOrNull() ?: 20f,
-            labels = listOf("Start", "Mid", "End")
-        )
-    }
 }

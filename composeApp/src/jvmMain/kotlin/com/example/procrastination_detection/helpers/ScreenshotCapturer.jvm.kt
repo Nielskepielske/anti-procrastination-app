@@ -15,7 +15,9 @@ actual suspend fun takeScreenshot(): ByteArray? = withContext(Dispatchers.IO) {
     // Hyprland sets specific environment variables we can check
     val xdgDesktop = System.getenv("XDG_CURRENT_DESKTOP")
     val hyprlandSignature = System.getenv("HYPRLAND_INSTANCE_SIGNATURE")
-    val isHyprland = xdgDesktop?.equals("Hyprland", ignoreCase = true) == true || hyprlandSignature != null
+    val isHyprland = xdgDesktop?.equals("Hyprland", ignoreCase = true) == true || 
+                     hyprlandSignature != null || 
+                     HyprlandEnvHelper.getSignature() != null
 
     if (isLinux && isHyprland) {
         println("ScreenshotCapturer: 🐧 Hyprland detected. Using native Wayland tools...")
@@ -30,7 +32,9 @@ actual suspend fun takeScreenshot(): ByteArray? = withContext(Dispatchers.IO) {
 private fun takeHyprlandScreenshot(): ByteArray? {
     return try {
         // 1. Get the active window details
-        val hyprctlProcess = ProcessBuilder("hyprctl", "activewindow").start()
+        val hyprctlPb = ProcessBuilder("hyprctl", "activewindow")
+        HyprlandEnvHelper.applyTo(hyprctlPb)
+        val hyprctlProcess = hyprctlPb.start()
         val windowInfo = hyprctlProcess.inputStream.bufferedReader().readText()
         hyprctlProcess.waitFor()
 
@@ -54,7 +58,9 @@ private fun takeHyprlandScreenshot(): ByteArray? {
         val geometry = "$x,$y ${width}x$height"
 
         // 3. Command grim to take a screenshot and pipe to stdout
-        val grimProcess = ProcessBuilder("grim", "-g", geometry, "-").start()
+        val grimPb = ProcessBuilder("grim", "-g", geometry, "-")
+        HyprlandEnvHelper.applyTo(grimPb)
+        val grimProcess = grimPb.start()
         val imageBytes = grimProcess.inputStream.readBytes()
         val exitCode = grimProcess.waitFor()
 

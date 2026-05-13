@@ -13,6 +13,7 @@ import com.example.procrastination_detection.domain.pipeline.compaction.Compacti
 import com.example.procrastination_detection.domain.pipeline.compaction.strategies.AppSwitchCompactionStrategy
 import com.example.procrastination_detection.domain.pipeline.compaction.strategies.MouseCompactionStrategy
 import com.example.procrastination_detection.domain.pipeline.resampling.DistractionAverageReducer
+import com.example.procrastination_detection.domain.pipeline.resampling.IntensityCountReducer
 import com.example.procrastination_detection.domain.pipeline.resampling.SwitchCountReducer
 import com.example.procrastination_detection.domain.pipeline.resampling.WindowedReducer
 import com.example.procrastination_detection.domain.pipeline.stream.SlidingWindowAnalyzer
@@ -154,10 +155,11 @@ val coreModule = module {
 
     factory { SwitchCountReducer() }
     factory { DistractionAverageReducer() }
+    factory { IntensityCountReducer() }
     single { SwitchFrequencyStrategy(repository = get(), reducer = get()) }
-    single { com.example.procrastination_detection.ui.analytics.strategy.DistractionAverageStrategy(repository = get(), dictionaryEngine = get(), reducer = get()) }
+    single { com.example.procrastination_detection.ui.analytics.strategy.DistractionAverageStrategy(repository = get(), dictionaryEngine = get(), reducer = get<DistractionAverageReducer>()) }
     single { com.example.procrastination_detection.ui.analytics.strategy.TopElementsStrategy(appUsageDao = get()) }
-    single { com.example.procrastination_detection.ui.analytics.strategy.IntensityStrategy(sensorEventDao = get()) }
+    single { com.example.procrastination_detection.ui.analytics.strategy.IntensityStrategy(sensorEventDao = get(), reducer = get<IntensityCountReducer>()) }
 
     // Streaming
     single<SlidingWindowAnalyzer<out SensorPayload>> { TabHoppingAnalyzer() }

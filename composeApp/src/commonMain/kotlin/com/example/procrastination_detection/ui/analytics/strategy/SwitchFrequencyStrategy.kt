@@ -44,11 +44,20 @@ class SwitchFrequencyStrategy(
             timestampSelector = { it.timestamp } // <--- This now works perfectly!
         )
 
-        // 3. Reduce each bucket
-        val points = buckets.entries.sortedBy { it.key }.map { (time, items) ->
-            // Pass the inner payloads to the reducer
-            reducer.reduce(time, items.map { it.payload })
+
+        // Sort the buckets once so we guarantee points and labels stay perfectly aligned
+        val sortedEntries = buckets.entries.sortedBy { it.key }
+
+        // 3. Reduce each bucket into points
+        val points = sortedEntries.map { (time, items) ->
+            reducer.reduce(time, items = items.map { it.payload })
         }
+
+        // 4. Generate a label for EACH bucket
+        val labels = sortedEntries.map { (time, _) ->
+            time
+        }
+
 
         return ChartData.Line(
             lines = listOf(
@@ -59,10 +68,23 @@ class SwitchFrequencyStrategy(
                 )
             ),
             maxPoint = points.maxOrNull()?.coerceAtLeast(5f) ?: 5f,
-            labels = generateXAxisLabels(startTime, endTime)
+            xCategories = labels
         )
     }
+    private fun formatBucketTimestamp(timestamp: Long, totalDurationMillis: Long): String {
+        val timeZone = TimeZone.currentSystemDefault()
+        val localDateTime = kotlinx.datetime.Instant.fromEpochMilliseconds(timestamp).toLocalDateTime(timeZone)
 
+        return if (totalDurationMillis <= 86_400_000L) { // 24 hours or less -> Time format
+            val hour = localDateTime.hour.toString().padStart(2, '0')
+            val minute = localDateTime.minute.toString().padStart(2, '0')
+            "$hour:$minute"
+        } else { // More than 24 hours -> Date format
+            val month = localDateTime.month.name.take(3).lowercase().replaceFirstChar { it.uppercase() }
+            val day = localDateTime.dayOfMonth.toString().padStart(2, '0')
+            "$month $day"
+        }
+    }
 
     private fun generateXAxisLabels(startTime: Long, endTime: Long): List<String> {
         val durationMillis = endTime - startTime

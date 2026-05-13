@@ -25,6 +25,16 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.zIndex
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.boundsInWindow
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
+import androidx.compose.ui.unit.IntOffset
+import kotlin.math.roundToInt
+import androidx.compose.runtime.mutableStateMapOf
 import kotlin.reflect.KClass
 import com.example.procrastination_detection.domain.model.analytics.*
 import com.example.procrastination_detection.ui.analytics.components.*
@@ -36,7 +46,9 @@ fun hexToColor(hex: String): Color? = try {
     // If 6 hex digits, prepend full alpha
     val argb = if (clean.length == 6) (0xFF000000L or value) else value
     Color(argb.toInt())
-} catch (e: Exception) { null }
+} catch (e: Exception) {
+    null
+}
 
 @Composable
 fun ColorPicker(
@@ -54,14 +66,14 @@ fun ColorPicker(
         "#F44336" to "Red",
         "#00BCD4" to "Cyan"
     )
-    
+
     Row(
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         modifier = Modifier.fillMaxWidth()
     ) {
         colorPalette.forEach { (hex, _) ->
             val swatchColor = if (hex == null) MaterialTheme.colorScheme.onSurface
-                else hexToColor(hex) ?: Color.Gray
+            else hexToColor(hex) ?: Color.Gray
             val isSelected = selectedColorHex == hex
             Box(
                 modifier = Modifier
@@ -92,9 +104,15 @@ val chartRegistry = mapOf<KClass<out ChartData>, @Composable (ChartData) -> Unit
 @Composable
 fun FlexibleAnalyticsScreen(viewModel: FlexibleAnalyticsViewModel) {
     val blocks by viewModel.blocks.collectAsState()
-    
+
     var showAddDialog by remember { mutableStateOf(false) }
-    
+
+    // Drag and Drop state
+    val blockBounds = remember { mutableStateMapOf<String, Rect>() }
+    var draggedBlockId by remember { mutableStateOf<String?>(null) }
+    var dropTargetId by remember { mutableStateOf<String?>(null) }
+    var dragOffset by remember { mutableStateOf(Offset.Zero) }
+
     if (showAddDialog) {
         AddBlockDialog(
             viewModel = viewModel,
@@ -108,10 +126,10 @@ fun FlexibleAnalyticsScreen(viewModel: FlexibleAnalyticsViewModel) {
 
     Scaffold(
         floatingActionButton = {
-            FloatingActionButton(onClick = { 
+            FloatingActionButton(onClick = {
                 showAddDialog = true
             }) {
-                Text("+")
+                Icon(imageVector = Icons.Default.Add, contentDescription = "Add")
             }
         }
     ) { paddingValues ->
@@ -129,7 +147,40 @@ fun FlexibleAnalyticsScreen(viewModel: FlexibleAnalyticsViewModel) {
                     block = block,
                     allBlocks = blocks,
                     viewModel = viewModel,
-                    onTimeRangeChanged = { newRange -> viewModel.updateTimeRange(block.id, newRange) }
+                    onTimeRangeChanged = { newRange -> viewModel.updateTimeRange(block.id, newRange) },
+                    blockBounds = blockBounds,
+                    draggedBlockId = draggedBlockId,
+                    dropTargetId = dropTargetId,
+                    dragOffset = dragOffset,
+                    onDragStart = { id ->
+                        draggedBlockId = id
+                        dragOffset = Offset.Zero
+                    },
+                    onDrag = { change, dragAmount ->
+                        dragOffset += dragAmount
+                        val draggedBounds = blockBounds[draggedBlockId]
+                        if (draggedBounds != null) {
+                            val pointerGlobal = draggedBounds.topLeft + change.position
+                            dropTargetId = blockBounds.entries.find { (id, bounds) ->
+                                id != draggedBlockId && bounds.contains(pointerGlobal)
+                            }?.key
+                        }
+                    },
+                    onDragEnd = {
+                        if (draggedBlockId != null && dropTargetId != null && draggedBlockId != dropTargetId) {
+                            if (viewModel.canCombine(draggedBlockId!!, dropTargetId!!)) {
+                                viewModel.combineBlocks(draggedBlockId!!, dropTargetId!!, "Combined Chart")
+                            }
+                        }
+                        draggedBlockId = null
+                        dropTargetId = null
+                        dragOffset = Offset.Zero
+                    },
+                    onDragCancel = {
+                        draggedBlockId = null
+                        dropTargetId = null
+                        dragOffset = Offset.Zero
+                    }
                 )
             }
             item { Spacer(Modifier.height(80.dp)) } // padding for FAB
@@ -143,7 +194,15 @@ fun DashboardBlockWrapper(
     block: DashboardBlock,
     allBlocks: List<DashboardBlock>,
     viewModel: FlexibleAnalyticsViewModel,
-    onTimeRangeChanged: (TimeRange) -> Unit
+    onTimeRangeChanged: (TimeRange) -> Unit,
+    blockBounds: MutableMap<String, Rect>,
+    draggedBlockId: String?,
+    dropTargetId: String?,
+    dragOffset: Offset,
+    onDragStart: (String) -> Unit,
+    onDrag: (androidx.compose.ui.input.pointer.PointerInputChange, Offset) -> Unit,
+    onDragEnd: () -> Unit,
+    onDragCancel: () -> Unit
 ) {
     var showMergeMenu by remember { mutableStateOf(false) }
     var showEditDialog by remember { mutableStateOf(false) }
@@ -155,7 +214,8 @@ fun DashboardBlockWrapper(
                     block = block,
                     viewModel = viewModel,
                     onDismiss = { showEditDialog = false },
-                    onSave = { newStrategy, newColorHex ->
+                    onSave = { newTitle, newStrategy, newColorHex ->
+                        viewModel.renameBlock(block.id, newTitle)
                         viewModel.editBlockStrategy(block.id, newStrategy)
                         viewModel.editBlockColor(block.id, newColorHex)
                         showEditDialog = false
@@ -163,6 +223,7 @@ fun DashboardBlockWrapper(
                     onDelete = { viewModel.deleteBlock(block.id) }
                 )
             }
+
             is CombinedChartBlock -> {
                 EditCombinedBlockDialog(
                     block = block,
@@ -173,10 +234,38 @@ fun DashboardBlockWrapper(
         }
     }
 
+    val isDragged = draggedBlockId == block.id
+    val isTarget = dropTargetId == block.id && viewModel.canCombine(draggedBlockId ?: "", block.id)
+
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .onGloballyPositioned { coordinates ->
+                blockBounds[block.id] = coordinates.boundsInWindow()
+            }
+            .pointerInput(block.id) {
+                detectDragGesturesAfterLongPress(
+                    onDragStart = { onDragStart(block.id) },
+                    onDrag = { change, dragAmount -> 
+                        change.consume()
+                        onDrag(change, dragAmount) 
+                    },
+                    onDragEnd = onDragEnd,
+                    onDragCancel = onDragCancel
+                )
+            }
+            .then(
+                if (isDragged) Modifier
+                    .offset { IntOffset(dragOffset.x.roundToInt(), dragOffset.y.roundToInt()) }
+                    .zIndex(10f)
+                else Modifier.zIndex(0f)
+            )
+            .then(
+                if (isTarget) Modifier.border(2.dp, MaterialTheme.colorScheme.primary, RoundedCornerShape(24.dp))
+                else Modifier
+            ),
         shape = RoundedCornerShape(24.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = if (isDragged) 0.8f else 0.5f))
     ) {
         Column(modifier = Modifier.padding(24.dp)) {
             // Header & Time Range Controls
@@ -192,7 +281,7 @@ fun DashboardBlockWrapper(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    Row(modifier = Modifier.background(Color.Gray.copy(alpha=0.1f), RoundedCornerShape(8.dp))) {
+                    Row(modifier = Modifier.background(Color.Gray.copy(alpha = 0.1f), RoundedCornerShape(8.dp))) {
                         TimeRange.entries.forEach { range ->
                             val isSelected = block.timeRange == range
                             Text(
@@ -263,6 +352,7 @@ fun DashboardBlockWrapper(
                         renderer?.invoke(tintedData)
                     }
                 }
+
                 is CombinedChartBlock -> {
                     // Check if all children have loaded data and are Line charts
                     val allLoaded = block.childBlocks.all { it.chartData != null }
@@ -274,28 +364,33 @@ fun DashboardBlockWrapper(
                         }
                     } else if (allLines) {
                         // Merge them into a single multi-line chart!
-                        val colors = listOf(Color.Blue, Color.Red, Color(0xFF4CAF50), Color(0xFFFF9800), Color(0xFF9C27B0))
-                        val mergedLines = block.childBlocks.flatMapIndexed { childIndex, child -> 
+                        val colors =
+                            listOf(Color.Blue, Color.Red, Color(0xFF4CAF50), Color(0xFFFF9800), Color(0xFF9C27B0))
+                        val mergedLines = block.childBlocks.flatMapIndexed { childIndex, child ->
                             val lines = (child.chartData as ChartData.Line).lines
                             val customColor = child.colorHex?.let { hexToColor(it) }
-                            
-                            lines.mapIndexed { lineIndex, line -> 
+
+                            lines.mapIndexed { lineIndex, line ->
                                 val color = customColor ?: colors[(childIndex * 10 + lineIndex) % colors.size]
                                 line.copy(color = color, name = "${child.title} - ${line.name}")
                             }
                         }
                         val maxPoint = block.childBlocks.maxOf { (it.chartData as ChartData.Line).maxPoint }
-                        val labels = (block.childBlocks.first().chartData as ChartData.Line).labels
-                        
+                        val labels = (block.childBlocks.first().chartData as ChartData.Line).xCategories
+
                         val mergedChartData = ChartData.Line(mergedLines, maxPoint, labels)
                         LineChartComposable(mergedChartData)
                     } else {
                         Column(modifier = Modifier.fillMaxWidth()) {
                             block.childBlocks.forEachIndexed { index, child ->
-                                Text(child.title, style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(bottom = 8.dp))
+                                Text(
+                                    child.title,
+                                    style = MaterialTheme.typography.titleMedium,
+                                    modifier = Modifier.padding(bottom = 8.dp)
+                                )
                                 val renderer = chartRegistry[child.chartData!!::class]
                                 renderer?.invoke(child.chartData!!)
-                                
+
                                 if (index < block.childBlocks.size - 1) {
                                     Spacer(modifier = Modifier.height(16.dp))
                                     HorizontalDivider(modifier = Modifier.padding(horizontal = 32.dp))
@@ -318,7 +413,7 @@ fun AddBlockDialog(
     onAdd: (String, String, String?) -> Unit
 ) {
     var title by remember { mutableStateOf("New Block") }
-    
+
     val allSensors by viewModel.availableSensors.collectAsState()
     val sensorOptions = remember(allSensors) { listOf(Pair("all", "All Sensors")) + allSensors }
     var selectedSensor by remember { mutableStateOf<String?>("all") }
@@ -401,7 +496,7 @@ fun AddBlockDialog(
         },
         confirmButton = {
             TextButton(
-                onClick = { 
+                onClick = {
                     if (selectedStrategy.isNotEmpty()) {
                         onAdd(title, selectedStrategy, selectedSensor)
                     }
@@ -424,15 +519,18 @@ fun EditBlockDialog(
     block: SingleChartBlock,
     viewModel: FlexibleAnalyticsViewModel,
     onDismiss: () -> Unit,
-    onSave: (String, String?) -> Unit,
+    onSave: (String, String, String?) -> Unit,
     onDelete: () -> Unit
 ) {
     val allSensors by viewModel.availableSensors.collectAsState()
-    val sensorName = if (block.sensorId == null) "All Sensors" else allSensors.find { it.first == block.sensorId }?.second ?: block.sensorId
+    val sensorName =
+        if (block.sensorId == null) "All Sensors" else allSensors.find { it.first == block.sensorId }?.second
+            ?: block.sensorId
 
     val strategies = viewModel.strategiesForSensor(block.sensorId)
     var selectedStrategy by remember { mutableStateOf(block.dataType) }
     var strategyExpanded by remember { mutableStateOf(false) }
+    var editedTitle by remember { mutableStateOf(block.title) }
 
     // Color palette swatches
     val colorPalette = listOf(
@@ -452,6 +550,13 @@ fun EditBlockDialog(
         title = { Text("Edit Block: ${block.title}") },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                OutlinedTextField(
+                    value = editedTitle,
+                    onValueChange = { editedTitle = it },
+                    label = { Text("Block Title") },
+                    modifier = Modifier.fillMaxWidth()
+                )
+
                 OutlinedTextField(
                     value = sensorName,
                     onValueChange = {},
@@ -490,7 +595,11 @@ fun EditBlockDialog(
                 }
 
                 // Color Picker
-                Text("Line Color", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(
+                    "Line Color",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
                 ColorPicker(
                     selectedColorHex = selectedColorHex,
                     onColorSelected = { selectedColorHex = it }
@@ -499,10 +608,13 @@ fun EditBlockDialog(
         },
         confirmButton = {
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                TextButton(onClick = { onDelete(); onDismiss() }, colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)) {
+                TextButton(
+                    onClick = { onDelete(); onDismiss() },
+                    colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
+                ) {
                     Text("Delete")
                 }
-                TextButton(onClick = { onSave(selectedStrategy, selectedColorHex) }) {
+                TextButton(onClick = { onSave(editedTitle, selectedStrategy, selectedColorHex) }) {
                     Text("Save")
                 }
             }
@@ -522,27 +634,55 @@ fun EditCombinedBlockDialog(
     viewModel: FlexibleAnalyticsViewModel,
     onDismiss: () -> Unit
 ) {
+    var editedTitle by remember { mutableStateOf(block.title) }
+
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Edit Combination: ${block.title}") },
+        title = { Text("Edit Combination") },
         text = {
-            LazyColumn(verticalArrangement = Arrangement.spacedBy(16.dp), modifier = Modifier.heightIn(max = 400.dp)) {
+            Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                OutlinedTextField(
+                    value = editedTitle,
+                    onValueChange = { 
+                        editedTitle = it
+                        viewModel.renameBlock(block.id, it)
+                    },
+                    label = { Text("Combined Block Title") },
+                    modifier = Modifier.fillMaxWidth()
+                )
+                
+                LazyColumn(verticalArrangement = Arrangement.spacedBy(16.dp), modifier = Modifier.heightIn(max = 400.dp)) {
                 items(block.childBlocks) { child ->
                     Card(
                         modifier = Modifier.fillMaxWidth(),
-                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(
+                                alpha = 0.8f
+                            )
+                        )
                     ) {
-                        Column(modifier = Modifier.padding(12.dp).fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
+                        Column(
+                            modifier = Modifier.padding(12.dp).fillMaxWidth(),
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
                                 Text(child.title, style = MaterialTheme.typography.titleSmall)
                                 IconButton(onClick = { viewModel.removeChildFromCombined(block.id, child.id) }) {
-                                    Icon(Icons.Default.RemoveCircle, "Remove sensor", tint = MaterialTheme.colorScheme.error)
+                                    Icon(
+                                        Icons.Default.RemoveCircle,
+                                        "Remove sensor",
+                                        tint = MaterialTheme.colorScheme.error
+                                    )
                                 }
                             }
-                            
+
                             val strategies = viewModel.strategiesForSensor(child.sensorId)
                             var strategyExpanded by remember { mutableStateOf(false) }
-                            
+
                             ExposedDropdownMenuBox(
                                 expanded = strategyExpanded,
                                 onExpandedChange = { strategyExpanded = it }
@@ -563,7 +703,12 @@ fun EditCombinedBlockDialog(
                                         DropdownMenuItem(
                                             text = { Text(option.second) },
                                             onClick = {
-                                                viewModel.updateChildInCombined(block.id, child.id, option.first, child.colorHex)
+                                                viewModel.updateChildInCombined(
+                                                    block.id,
+                                                    child.id,
+                                                    option.first,
+                                                    child.colorHex
+                                                )
                                                 strategyExpanded = false
                                             }
                                         )
@@ -574,13 +719,20 @@ fun EditCombinedBlockDialog(
                             Text("Color", style = MaterialTheme.typography.labelSmall)
                             ColorPicker(
                                 selectedColorHex = child.colorHex,
-                                onColorSelected = { viewModel.updateChildInCombined(block.id, child.id, child.dataType, it) },
+                                onColorSelected = {
+                                    viewModel.updateChildInCombined(
+                                        block.id,
+                                        child.id,
+                                        child.dataType,
+                                        it
+                                    )
+                                },
                                 size = 24
                             )
                         }
                     }
                 }
-                
+
                 item {
                     Button(
                         onClick = { viewModel.deleteBlock(block.id); onDismiss() },
@@ -589,6 +741,7 @@ fun EditCombinedBlockDialog(
                     ) {
                         Text("Delete Entire Combination")
                     }
+                }
                 }
             }
         },

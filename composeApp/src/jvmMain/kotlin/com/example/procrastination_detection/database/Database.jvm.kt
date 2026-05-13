@@ -3,6 +3,7 @@ package com.example.procrastination_detection.database
 // shared/src/jvmMain/kotlin/.../Database.jvm.kt
 import androidx.room.Room
 import androidx.room.RoomDatabase
+import com.example.procrastination_detection.data.local.AppDatabase
 import java.io.File
 
 fun getDatabaseBuilder(): RoomDatabase.Builder<AppDatabase> {

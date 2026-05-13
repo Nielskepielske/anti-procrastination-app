@@ -1,20 +1,20 @@
 package com.example.procrastination_detection.helpers
 
 expect class LocalUrlExtractor(){
-    suspend fun extractUrlFromImage(imageData: ByteArray): String?
+    suspend fun extractUrlFromImage(imageData: ByteArray, windowTitle: String? = null): String?
 }
 
-fun extractUrlWithRegex(text: String): String? {
+fun extractAllUrlsWithRegex(text: String): List<String> {
     // The Regex now supports SUBDOMAINS!
     // (?:[a-zA-Z0-9][a-zA-Z0-9-]*\.)+ means "one or more words ending in a dot"
     val urlPattern = """(?:https?://)?(?:www\.)?(?:[a-zA-Z0-9][a-zA-Z0-9-]*\.)+[a-zA-Z]{2,6}\b(?:[-a-zA-Z0-9()@:%_+.~#?&/=]*)""".toRegex()
 
     val matches = urlPattern.findAll(text)
 
-    for (match in matches) {
+    return matches.mapNotNull { match ->
         var foundUrl = match.value
 
-        if (foundUrl.length < 5) continue
+        if (foundUrl.length < 5) return@mapNotNull null
 
         // 1. Add https:// if it's missing
         if (!foundUrl.startsWith("http")) {
@@ -28,8 +28,11 @@ fun extractUrlWithRegex(text: String): String? {
             foundUrl = foundUrl.substring(0, pathStartIndex)
         }
 
-        return foundUrl // Boom. Clean base URL with subdomains intact.
-    }
+        foundUrl // Clean base URL with subdomains intact.
+    }.toList().distinct()
+}
 
-    return null
+// Keep the old one for backward compatibility if needed, or simply route it
+fun extractUrlWithRegex(text: String): String? {
+    return extractAllUrlsWithRegex(text).firstOrNull()
 }

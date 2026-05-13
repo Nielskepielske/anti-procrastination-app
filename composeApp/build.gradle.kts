@@ -45,6 +45,9 @@ kotlin {
 
             // Text recognition
             implementation(libs.text.recognition)
+
+            // Work manager
+            implementation(libs.androidx.work.runtime)
         }
         commonMain.dependencies {
             implementation(libs.compose.runtime)
@@ -55,6 +58,7 @@ kotlin {
             implementation(libs.compose.uiToolingPreview)
             implementation(libs.androidx.lifecycle.viewmodelCompose)
             implementation(libs.androidx.lifecycle.runtimeCompose)
+            implementation(libs.kotlinx.datetime)
             // Room
             implementation(libs.androidx.room.runtime)
             implementation(libs.androidx.sqlite.bundled)
@@ -73,6 +77,20 @@ kotlin {
 
             // Notifier
             api("io.github.mirzemehdi:kmpnotifier:1.6.1") // in iOS export this library
+
+            // Koin
+            implementation(libs.koin.core)
+            implementation(libs.koin.compose.viewmodel)
+
+            // DataStore
+            implementation(libs.androidx.datastore.preferences)
+            implementation(libs.androidx.datastore)
+
+            // Serialization
+            implementation(libs.kotlinx.serialization.core)
+
+            // Charting
+            implementation(libs.koalaplot.core)
         }
         commonTest.dependencies {
             implementation(libs.kotlin.test)

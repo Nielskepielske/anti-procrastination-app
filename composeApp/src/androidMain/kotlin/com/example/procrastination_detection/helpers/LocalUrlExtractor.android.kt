@@ -6,7 +6,7 @@ import com.google.mlkit.vision.text.TextRecognition
 import com.google.mlkit.vision.text.latin.TextRecognizerOptions
 
 actual class LocalUrlExtractor {
-    actual suspend fun extractUrlFromImage(imageData: ByteArray): String? {
+    actual suspend fun extractUrlFromImage(imageData: ByteArray, windowTitle: String?): String? {
         // 1. Convert ByteArray to Android Bitmap, then to InputImage
         // 2. Pass to ML Kit
         val recognizer = TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS)
@@ -16,6 +16,7 @@ actual class LocalUrlExtractor {
         // val extractedText = result.text
 
         // 3. Run Regex to find the URL in the extractedText
-        return extractUrlWithRegex(extractedText)
+        // TODO: Implement full fallback chain (BoundingBox crop + titleMatch) for Android via ML Kit
+        return null // placeholder
     }
 }

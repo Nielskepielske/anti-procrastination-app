@@ -5,6 +5,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlin.math.max
 
+@Deprecated("No longer used. Replaced by InterventionStrategy and FocusTimerEngine.")
 class FocusEnforcerEngine {
     // Map of offending app titles to their aggression level
     private val _enforcedApps = MutableStateFlow<Map<String, Int>>(emptyMap())

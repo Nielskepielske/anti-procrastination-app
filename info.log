@@ -1,0 +1,33 @@
+Initialized native services in: /home/niels/.gradle/native
+Initialized jansi services in: /home/niels/.gradle/native
+Found daemon DaemonInfo{pid=116372, address=[8a71cf11-cc6c-4058-9c60-f52fbd230d34 port:35823, addresses:[/127.0.0.1]], state=Idle, lastBusy=1780162926128, context=DefaultDaemonContext[uid=a2ec19e2-de72-4ce4-ac74-d58b92f3bbda,javaHome=/usr/lib/jvm/java-21-openjdk,javaVersion=21,javaVendor=Red Hat, Inc.,daemonRegistryDir=/home/niels/.gradle/daemon,pid=116372,idleTimeout=10800000,priority=NORMAL,applyInstrumentationAgent=true,nativeServicesMode=ENABLED,daemonOpts=-Xmx4096M,-Dfile.encoding=UTF-8,-Duser.country=GB,-Duser.language=en,-Duser.variant]} however its context does not match the desired criteria.
+JVM is incompatible.
+Wanted: DaemonRequestContext{jvmCriteria=/usr/lib/jvm/java-latest-openjdk (no JDK specified, using current Java home), daemonOpts=[-Xmx4096M, -Dfile.encoding=UTF-8, -Duser.country=GB, -Duser.language=en, -Duser.variant], applyInstrumentationAgent=true, nativeServicesMode=ENABLED, priority=NORMAL}
+Actual: DefaultDaemonContext[uid=a2ec19e2-de72-4ce4-ac74-d58b92f3bbda,javaHome=/usr/lib/jvm/java-21-openjdk,javaVersion=21,javaVendor=Red Hat, Inc.,daemonRegistryDir=/home/niels/.gradle/daemon,pid=116372,idleTimeout=10800000,priority=NORMAL,applyInstrumentationAgent=true,nativeServicesMode=ENABLED,daemonOpts=-Xmx4096M,-Dfile.encoding=UTF-8,-Duser.country=GB,-Duser.language=en,-Duser.variant]
+
+  Looking for a different daemon...
+The client will now receive all logging from the daemon (pid: 112244). The daemon log file: /home/niels/.gradle/daemon/8.14.3/daemon-112244.out.log
+Starting 7th build in daemon [uptime: 1 hrs 23 mins 51.397 secs, performance: 99%, GC rate: 0.00/s, heap usage: 0% of 4 GiB]
+Using 16 worker leases.
+Now considering [/home/niels/Documents/Informatica/individueel/procrastination-detection] as hierarchies to watch
+Calculating task graph as configuration cache cannot be reused because JVM has changed.
+Now considering [/home/niels/Documents/Informatica/individueel/procrastination-detection] as hierarchies to watch
+Watching the file system is configured to be enabled if available
+File system watching is active
+Starting Build
+Caching disabled for Kotlin DSL script compilation (Settings/TopLevel/stage1) because:
+  Build cache is disabled
+
+FAILURE: Build failed with an exception.
+
+* What went wrong:
+26
+
+* Try:
+> Run with --stacktrace option to get the stack trace.
+> Run with --debug option to get more log output.
+> Run with --scan to get full insights.
+> Get more help at https://help.gradle.org.
+
+BUILD FAILED in 622ms
+Configuration cache entry stored.

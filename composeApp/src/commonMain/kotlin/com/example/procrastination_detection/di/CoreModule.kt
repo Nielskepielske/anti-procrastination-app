@@ -35,6 +35,7 @@ import com.example.procrastination_detection.ui.analytics.strategy.SwitchFrequen
 import com.example.procrastination_detection.ui.dashboard.DashboardViewModel
 import com.example.procrastination_detection.ui.dictionary.DictionaryViewModel
 import com.example.procrastination_detection.ui.profile.ProfileViewModel
+import com.example.procrastination_detection.domain.sensor.TelemetryManager
 import org.koin.core.module.dsl.viewModel
 import org.koin.dsl.module
 
@@ -81,7 +82,16 @@ val coreModule = module {
         com.example.procrastination_detection.domain.repository.FocusProfileRepository(
             focusProfileDao = get(),
             activeProfileStore = get(),
-            sensorManager = get()
+            sensorManager = get(),
+            scope = get()
+        )
+    }
+
+    single {
+        TelemetryManager(
+            pipeline = get(),
+            sensorManager = get(),
+            scope = get()
         )
     }
 
@@ -123,19 +133,25 @@ val coreModule = module {
     single { TriggerManager(availableTriggers = getAll<ActionTrigger>()) }
 
     // Viewmodels
-    viewModel { DashboardViewModel(pipeline = get(), sensorManager = get()) }
+    viewModel {
+        DashboardViewModel(
+            pipeline = get(),
+            sensorManager = get(),
+            browserAnalyserEngine = get(),
+            focusProfileRepository = get(),
+            telemetryManager = get()
+        )
+    }
     viewModel { DictionaryViewModel(dictionaryEngine = get(), ruleRepository = get(), inboxDao = get(), triggerManager = get()) }
     viewModel { ProfileViewModel(sensorManager = get(), interventionManager = get(), focusProfileRepository = get()) }
     viewModel { AnalyticsViewModel(appUsageDao = get(), sensorEventDao = get(), dictionaryEngine = get()) }
     single { com.example.procrastination_detection.data.local.AnalyticsConfigStore() }
     viewModel { 
-        val strategies = setOf<DashboardDataStrategy>(
-            get<SwitchFrequencyStrategy>(),
-            get<com.example.procrastination_detection.ui.analytics.strategy.DistractionAverageStrategy>(),
-            get<com.example.procrastination_detection.ui.analytics.strategy.TopElementsStrategy>(),
-            get<com.example.procrastination_detection.ui.analytics.strategy.IntensityStrategy>()
-        )
-        FlexibleAnalyticsViewModel(strategies = strategies, sensorManager = get(), configStore = get()) 
+        FlexibleAnalyticsViewModel(
+            strategies = getAll<DashboardDataStrategy>().toSet(), 
+            sensorManager = get(), 
+            configStore = get()
+        ) 
     }
 
 
@@ -156,10 +172,15 @@ val coreModule = module {
     factory { SwitchCountReducer() }
     factory { DistractionAverageReducer() }
     factory { IntensityCountReducer() }
-    single { SwitchFrequencyStrategy(repository = get(), reducer = get()) }
-    single { com.example.procrastination_detection.ui.analytics.strategy.DistractionAverageStrategy(repository = get(), dictionaryEngine = get(), reducer = get<DistractionAverageReducer>()) }
-    single { com.example.procrastination_detection.ui.analytics.strategy.TopElementsStrategy(appUsageDao = get()) }
-    single { com.example.procrastination_detection.ui.analytics.strategy.IntensityStrategy(sensorEventDao = get(), reducer = get<IntensityCountReducer>()) }
+    factory { com.example.procrastination_detection.domain.pipeline.resampling.MouseDistanceReducer() }
+    factory { com.example.procrastination_detection.domain.pipeline.resampling.MouseIdleReducer() }
+
+    single<DashboardDataStrategy>(org.koin.core.qualifier.named("switchFreq")) { SwitchFrequencyStrategy(repository = get(), reducer = get()) }
+    single<DashboardDataStrategy>(org.koin.core.qualifier.named("distractAvg")) { com.example.procrastination_detection.ui.analytics.strategy.DistractionAverageStrategy(repository = get(), dictionaryEngine = get(), reducer = get<DistractionAverageReducer>()) }
+    single<DashboardDataStrategy>(org.koin.core.qualifier.named("topElements")) { com.example.procrastination_detection.ui.analytics.strategy.TopElementsStrategy(appUsageDao = get()) }
+    single<DashboardDataStrategy>(org.koin.core.qualifier.named("intensity")) { com.example.procrastination_detection.ui.analytics.strategy.IntensityStrategy(sensorEventDao = get(), reducer = get<IntensityCountReducer>()) }
+    single<DashboardDataStrategy>(org.koin.core.qualifier.named("mouseDist")) { com.example.procrastination_detection.ui.analytics.strategy.MouseDistanceStrategy(sensorEventDao = get(), reducer = get<com.example.procrastination_detection.domain.pipeline.resampling.MouseDistanceReducer>()) }
+    single<DashboardDataStrategy>(org.koin.core.qualifier.named("mouseIdle")) { com.example.procrastination_detection.ui.analytics.strategy.MouseIdleStrategy(sensorEventDao = get(), reducer = get<com.example.procrastination_detection.domain.pipeline.resampling.MouseIdleReducer>()) }
 
     // Streaming
     single<SlidingWindowAnalyzer<out SensorPayload>> { TabHoppingAnalyzer() }

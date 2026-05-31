@@ -35,6 +35,7 @@ import io.github.koalaplot.core.gestures.GestureConfig
 import io.github.koalaplot.core.xygraph.FloatLinearAxisModel
 import io.github.koalaplot.core.xygraph.DefaultPoint
 import io.github.koalaplot.core.line.LinePlot2
+import io.github.koalaplot.core.style.AreaStyle
 import io.github.koalaplot.core.style.KoalaPlotTheme
 import io.github.koalaplot.core.style.LineStyle
 import io.github.koalaplot.core.util.ExperimentalKoalaPlotApi
@@ -163,7 +164,7 @@ fun LineChartComposable(data: ChartData.Line) {
             style = rememberAxisStyle()
         ),
         yAxisContent = AxisContent(
-            labels = { AxisLabel(it.toString()) },
+            labels = { AxisLabel("${it.toInt()}${data.valueSuffix}") },
             title = {},
             style = rememberAxisStyle()
         ),
@@ -203,8 +204,6 @@ fun LineChartComposable(data: ChartData.Line) {
             LinePlot2(
                 data = plotPoints,
                 lineStyle = LineStyle(brush = SolidColor(dataset.color), strokeWidth = 2.dp),
-
-                // ADD THIS: The symbol lambda is called for every single point on the line
                 symbol = { point ->
                     // 1. Remember the hover state for this specific dot
                     var isHovered by remember { mutableStateOf(false) }

@@ -7,14 +7,28 @@ import com.example.procrastination_detection.domain.model.EscalationLevel
 import com.example.procrastination_detection.domain.model.FocusProfile
 import com.example.procrastination_detection.domain.sensor.SensorManager
 import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
 
 class FocusProfileRepository(
     private val focusProfileDao: FocusProfileDao,
     private val activeProfileStore: ActiveProfileStore,
-    private val sensorManager: SensorManager
+    private val sensorManager: SensorManager,
+    private val scope: CoroutineScope
 ) {
     private val json = Json { ignoreUnknownKeys = true }
+
+    init {
+        scope.launch {
+            activeProfileFlow.collect { profile ->
+                if (profile != null) {
+                    println("FocusProfileRepository: 🔄 Startup/dynamic profile loaded: '${profile.name}'. Applying to SensorManager.")
+                    sensorManager.applyProfile(profile)
+                }
+            }
+        }
+    }
 
     val allProfilesFlow: Flow<List<FocusProfile>> = focusProfileDao.getAllProfiles()
         .onEach { entities ->

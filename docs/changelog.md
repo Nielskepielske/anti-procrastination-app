@@ -236,3 +236,39 @@ All notable architectural and implementation changes are recorded here, grouped 
 - **Granular Editing**: Users can now change strategies, colors, or remove individual sensors from a combination without deleting the entire block.
 - **Timeline Synchronization**: Fixed the "offset lines" bug by ensuring all sensors in a refresh cycle use the exact same temporal boundaries, aligned to the minute/hour grid.
 - **Dynamic De-combining**: Removing a sensor from a 2-sensor combination now automatically converts the remaining sensor back into a standard `SingleChartBlock`.
+
+---
+
+## Phase 9 — Sensor Architecture Refactor (2026-05-30)
+
+**Problem**: Adding new sensors required writing repetitive coroutine lifecycle management code, and sensor IDs were hardcoded strings, which lacked type safety and were prone to errors.
+
+**Solution**: Refactored the architecture to use a type-safe enum for IDs and introduced an abstract base class that manages polling, lifecycles, and error boundaries for all sensors.
+
+| File | Status | Reason |
+|---|---|---|
+| `domain/sensor/SensorType.kt` | **NEW** | Introduced type-safe enum to replace magic string IDs. |
+| `domain/sensor/BasePollingSensor.kt` | **NEW** | Abstract class that handles coroutine management, `isActive` checking, intervals, and error catching for any polling sensor. |
+| `domain/sensor/BehaviorSensor.kt` | **MODIFIED** | Interface now exposes `val type: SensorType` instead of `val id: String`. |
+| `sensor/LinuxWindowTracker.kt` | **MODIFIED** | Refactored to extend `BasePollingSensor`. Removed all manual coroutine management. |
+| `engine/BrowserAnalyserEngine.kt` | **MODIFIED** | Updated to implement `val type: SensorType`. |
+| `ui/profile/ProfileManagerScreen.kt` | **MODIFIED** | UI bindings updated to map from `SensorType.name`. |
+| `ui/analytics/FlexibleAnalyticsViewModel.kt` | **MODIFIED** | View model updated to dynamically map `SensorType.name`. |
+| `docs/creating_sensors.md` | **NEW** | Added detailed documentation on how to create and inject a new sensor using the new architecture. |
+
+---
+
+## Phase 10 — Mouse Tracking & Analytics Architecture Refactor (2026-05-30)
+
+**Problem**: Adding new analytics visualizations required developers to manually wire them into the `FlexibleAnalyticsViewModel`, breaking the Open-Closed Principle. Additionally, the system lacked physical behavior tracking like mouse movement to correlate with distraction levels.
+
+**Solution**: Completely decoupled the Analytics strategies using Koin's `bind` auto-discovery and implemented a robust Linux Mouse Tracker using `hyprctl`.
+
+| File | Status | Reason |
+|---|---|---|
+| `di/CoreModule.kt` | **MODIFIED** | Refactored strategy registration to use `getAll<DashboardDataStrategy>()`. The `FlexibleAnalyticsViewModel` now instantly discovers and renders new metrics without touching UI code. |
+| `sensor/LinuxMouseTracker.kt` | **NEW** | Implemented `BasePollingSensor` to track physical mouse movement and idle times using `hyprctl cursorpos`. Background telemetry is emitted without disrupting the active application context state. |
+| `domain/pipeline/resampling/MouseDistanceReducer.kt` & `MouseIdleReducer.kt` | **NEW** | Aggregates raw mouse distance and idle seconds into logical time buckets. |
+| `ui/analytics/strategy/MouseDistanceStrategy.kt` & `MouseIdleStrategy.kt` | **NEW** | Provides the dashboard blueprint for plotting mouse activity (px) and inactivity (s) using the new architecture. |
+| `docs/creating_strategies.md` | **NEW** | Added comprehensive developer documentation explaining how to build and register new Reducers and Strategies. |
+| `ui/analytics/components/ChartComponents.kt` | **MODIFIED** | Updated Y-axis rendering to support strategy-provided units (`valueSuffix`) for enhanced chart clarity. |

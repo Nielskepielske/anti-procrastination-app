@@ -68,7 +68,8 @@ class SwitchFrequencyStrategy(
                 )
             ),
             maxPoint = points.maxOrNull()?.coerceAtLeast(5f) ?: 5f,
-            xCategories = labels
+            xCategories = labels,
+            valueSuffix = "sw"
         )
     }
     private fun formatBucketTimestamp(timestamp: Long, totalDurationMillis: Long): String {

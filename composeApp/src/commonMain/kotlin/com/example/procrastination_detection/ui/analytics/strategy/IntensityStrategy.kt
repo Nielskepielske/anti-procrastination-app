@@ -65,7 +65,8 @@ class IntensityStrategy(
         return ChartData.Line(
             lines = listOf(dataset),
             maxPoint = maxPoint,
-            xCategories =  xCategories
+            xCategories =  xCategories,
+            valueSuffix = "ev"
         )
     }
     private fun formatBucketTimestamp(timestamp: Long, totalDurationMillis: Long): String {

@@ -29,7 +29,7 @@ class FlexibleAnalyticsViewModel(
     val availableStrategies: List<Pair<String, String>> = strategies.map { Pair(it.dataTypeId, it.displayName) }
     
     val availableSensors: StateFlow<List<Pair<String, String>>> =
-        MutableStateFlow(sensorManager.sensors.map { Pair(it.id, it.id) })
+        MutableStateFlow(sensorManager.sensors.map { Pair(it.type.name, it.type.name) })
 
     /**
      * Returns only the sensors whose emitted event types are compatible with the given strategy.

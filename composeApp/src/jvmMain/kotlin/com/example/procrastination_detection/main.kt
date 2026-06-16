@@ -82,6 +82,11 @@ fun main() = application {
         // Add Linux NotificationStrategy to the toolbox
         single<InterventionStrategy> { LinuxNotificationStrategy() }
 
+        // File Exporter for CSV archiving
+        single<com.example.procrastination_detection.domain.pipeline.FileExporter> { com.example.procrastination_detection.platform.desktop.DesktopFileExporter() }
+        single<com.example.procrastination_detection.domain.pipeline.SessionDownloader> { com.example.procrastination_detection.platform.desktop.DesktopSessionDownloader() }
+        single<com.example.procrastination_detection.domain.pipeline.CsvReader> { com.example.procrastination_detection.platform.desktop.DesktopCsvReader() }
+
         // Compaction Scheduler
         single<CompactionScheduler> {
             DesktopCompactionScheduler(
@@ -110,7 +115,7 @@ fun main() = application {
     eventPipeline.start(applicationScope)
 
     val sensorManager = koin.get<SensorManager>()
-    sensorManager.startAllActiveSensors()
+    // Tracking is no longer auto-started here. It's managed by SessionManager.
 
     val timerEngine = koin.get<FocusTimerEngine>()
     timerEngine.startListening()

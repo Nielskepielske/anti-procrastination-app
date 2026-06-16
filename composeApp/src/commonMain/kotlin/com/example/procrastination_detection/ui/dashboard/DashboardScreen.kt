@@ -21,12 +21,14 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.procrastination_detection.domain.model.Category
 import com.example.procrastination_detection.domain.sensor.SensorType
+import com.example.procrastination_detection.domain.model.EscalationLevel
 
 @Composable
 fun DashboardScreen(viewModel: DashboardViewModel) {
@@ -36,6 +38,11 @@ fun DashboardScreen(viewModel: DashboardViewModel) {
     val activeProfileName by viewModel.activeProfileNameFlow.collectAsState("No Profile")
     val activeSensors by viewModel.activeSensorsFlow.collectAsState(emptyList())
     val telemetry by viewModel.liveTelemetryFlow.collectAsState()
+    val orphanedSession by viewModel.orphanedSessionFlow.collectAsState()
+    val activeSession by viewModel.activeSessionFlow.collectAsState(null)
+    val aggressionHeat by viewModel.aggressionHeatFlow.collectAsState(0)
+    val escalationLevel by viewModel.escalationLevelFlow.collectAsState(EscalationLevel.GENTLE)
+    var showStopConfirmation by remember { mutableStateOf(false) }
 
     val isDark = isSystemInDarkTheme()
     val categoryColor = when (currentCategory) {
@@ -346,6 +353,176 @@ fun DashboardScreen(viewModel: DashboardViewModel) {
             }
         }
 
+        // --- 2.5. Aggression Heat Level Visualizer ---
+        if (isTracking) {
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .shadow(
+                        elevation = if (isDark) 0.dp else 8.dp, 
+                        shape = RoundedCornerShape(20.dp),
+                        clip = false
+                    ),
+                shape = RoundedCornerShape(20.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = if (isDark) MaterialTheme.colorScheme.surface.copy(alpha = 0.5f) else Color.White.copy(alpha = 0.9f)
+                ),
+                border = BorderStroke(
+                    width = 1.dp,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = if (isDark) 0.08f else 0.05f)
+                )
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(20.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "INTERVENTION AGGRESSION HEAT",
+                            style = MaterialTheme.typography.labelSmall.copy(
+                                letterSpacing = 1.2.sp,
+                                fontWeight = FontWeight.Bold
+                            ),
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                        
+                        Surface(
+                            color = when {
+                                aggressionHeat == 0 -> MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.1f)
+                                aggressionHeat < 3 -> Color(0xFF14B8A6).copy(alpha = 0.15f) // Teal
+                                aggressionHeat < 6 -> Color(0xFFF59E0B).copy(alpha = 0.15f) // Amber
+                                else -> Color(0xFFF43F5E).copy(alpha = 0.15f) // Rose
+                            },
+                            shape = RoundedCornerShape(8.dp)
+                        ) {
+                            Text(
+                                text = "Heat Score: $aggressionHeat",
+                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.Bold,
+                                color = when {
+                                    aggressionHeat == 0 -> MaterialTheme.colorScheme.onSurfaceVariant
+                                    aggressionHeat < 3 -> Color(0xFF14B8A6)
+                                    aggressionHeat < 6 -> Color(0xFFF59E0B)
+                                    else -> Color(0xFFF43F5E)
+                                }
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(20.dp))
+
+                    // Segmented Visualizer Bar
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        val isGentleActive = aggressionHeat > 0
+                        val isFirmActive = aggressionHeat >= 3
+                        val isAggressiveActive = aggressionHeat >= 6
+
+                        // Gentle Segment (Teal)
+                        AggressionSegment(
+                            label = "GENTLE",
+                            isActive = isGentleActive,
+                            color = Color(0xFF14B8A6),
+                            isHighest = isGentleActive && !isFirmActive,
+                            modifier = Modifier.weight(1f)
+                        )
+
+                        // Firm Segment (Amber)
+                        AggressionSegment(
+                            label = "FIRM",
+                            isActive = isFirmActive,
+                            color = Color(0xFFF59E0B),
+                            isHighest = isFirmActive && !isAggressiveActive,
+                            modifier = Modifier.weight(1f)
+                        )
+
+                        // Aggressive Segment (Rose)
+                        AggressionSegment(
+                            label = "AGGRESSIVE",
+                            isActive = isAggressiveActive,
+                            color = Color(0xFFF43F5E),
+                            isHighest = isAggressiveActive,
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(20.dp))
+
+                    // Helpful Hint / Tips about active strategies
+                    val (statusLabel, statusDesc, statusColor) = when {
+                        aggressionHeat == 0 -> Triple(
+                            "Calm & Productive", 
+                            "System is in standby mode. Keep up the good focus!", 
+                            MaterialTheme.colorScheme.primary
+                        )
+                        aggressionHeat < 3 -> Triple(
+                            "Gentle Interventions Active", 
+                            "Subtle desktop nudges are active to gently keep you on track.", 
+                            Color(0xFF14B8A6)
+                        )
+                        aggressionHeat < 6 -> Triple(
+                            "Firm Interventions Active", 
+                            "Window opacity starts fading. Bring focus back to proceed normally.", 
+                            Color(0xFFF59E0B)
+                        )
+                        else -> Triple(
+                            "CRITICAL ESCALATION ACTIVE", 
+                            "App killer is armed! Save work and close distracting activities immediately!", 
+                            Color(0xFFF43F5E)
+                        )
+                    }
+
+                    Surface(
+                        color = statusColor.copy(alpha = 0.05f),
+                        shape = RoundedCornerShape(12.dp),
+                        border = BorderStroke(1.dp, statusColor.copy(alpha = 0.15f)),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(16.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            Icon(
+                                imageVector = when {
+                                    aggressionHeat == 0 -> Icons.Default.CheckCircle
+                                    aggressionHeat < 3 -> Icons.Default.Notifications
+                                    aggressionHeat < 6 -> Icons.Default.Warning
+                                    else -> Icons.Default.Lock
+                                },
+                                contentDescription = null,
+                                tint = statusColor,
+                                modifier = Modifier.size(24.dp)
+                            )
+                            Column {
+                                Text(
+                                    text = statusLabel,
+                                    fontWeight = FontWeight.Bold,
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = statusColor
+                                )
+                                Spacer(modifier = Modifier.height(2.dp))
+                                Text(
+                                    text = statusDesc,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
         // --- 3. The Live Telemetry Card (Active Session Stats) ---
         if (isTracking) {
             Card(
@@ -481,45 +658,115 @@ fun DashboardScreen(viewModel: DashboardViewModel) {
         // --- 4. Tactile Master Control Button ---
         Column(
             modifier = Modifier.fillMaxWidth(),
-            horizontalAlignment = Alignment.CenterHorizontally
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            val buttonColor by animateColorAsState(
-                targetValue = if (isTracking) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary,
-                animationSpec = tween(durationMillis = 250)
-            )
-
-            Button(
-                onClick = {
-                    if (isTracking) viewModel.stopTracking() else viewModel.startTracking()
-                },
-                modifier = Modifier
-                    .fillMaxWidth(0.85f)
-                    .height(56.dp)
-                    .shadow(
-                        elevation = if (isDark) 0.dp else 6.dp,
-                        shape = RoundedCornerShape(28.dp)
+            if (activeSession == null) {
+                Button(
+                    onClick = { viewModel.startTracking() },
+                    modifier = Modifier
+                        .fillMaxWidth(0.85f)
+                        .height(56.dp)
+                        .shadow(
+                            elevation = if (isDark) 0.dp else 6.dp,
+                            shape = RoundedCornerShape(28.dp)
+                        ),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.primary
                     ),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = buttonColor
-                ),
-                shape = RoundedCornerShape(28.dp)
-            ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.Center,
-                    modifier = Modifier.fillMaxSize()
+                    shape = RoundedCornerShape(28.dp)
                 ) {
-                    Icon(
-                        imageVector = if (isTracking) Icons.Default.Stop else Icons.Default.PlayArrow,
-                        contentDescription = null,
-                        modifier = Modifier.size(20.dp)
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        text = if (isTracking) "Stop Tracking" else "Start Tracking",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold
-                    )
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.Center,
+                        modifier = Modifier.fillMaxSize()
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.PlayArrow,
+                            contentDescription = null,
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = "Start Tracking",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
+            } else {
+                Row(
+                    modifier = Modifier.fillMaxWidth(0.85f),
+                    horizontalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    val isPaused = activeSession?.status == "PAUSED"
+                    Button(
+                        onClick = {
+                            if (isPaused) viewModel.resumeTracking() else viewModel.pauseTracking()
+                        },
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(56.dp)
+                            .shadow(
+                                elevation = if (isDark) 0.dp else 6.dp,
+                                shape = RoundedCornerShape(28.dp)
+                            ),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.secondary
+                        ),
+                        shape = RoundedCornerShape(28.dp)
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.Center,
+                            modifier = Modifier.fillMaxSize()
+                        ) {
+                            Icon(
+                                imageVector = if (isPaused) Icons.Default.PlayArrow else Icons.Default.Pause,
+                                contentDescription = null,
+                                modifier = Modifier.size(20.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = if (isPaused) "Resume" else "Pause",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
+
+                    Button(
+                        onClick = { showStopConfirmation = true },
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(56.dp)
+                            .shadow(
+                                elevation = if (isDark) 0.dp else 6.dp,
+                                shape = RoundedCornerShape(28.dp)
+                            ),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.error
+                        ),
+                        shape = RoundedCornerShape(28.dp)
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.Center,
+                            modifier = Modifier.fillMaxSize()
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Stop,
+                                contentDescription = null,
+                                modifier = Modifier.size(20.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = "Stop",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
                 }
             }
             
@@ -532,6 +779,103 @@ fun DashboardScreen(viewModel: DashboardViewModel) {
                 textAlign = TextAlign.Center
             )
         }
+    }
+    
+    // Orphaned Session Modal Overlay
+    if (orphanedSession != null) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color.Black.copy(alpha = 0.6f))
+                // Disable background interactions
+                .pointerInput(Unit) {},
+            contentAlignment = Alignment.Center
+        ) {
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth(0.8f)
+                    .widthIn(max = 400.dp)
+                    .padding(32.dp),
+                shape = RoundedCornerShape(24.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surface
+                ),
+                elevation = CardDefaults.cardElevation(defaultElevation = 16.dp)
+            ) {
+                Column(
+                    modifier = Modifier.padding(32.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Warning,
+                        contentDescription = "Warning",
+                        tint = MaterialTheme.colorScheme.error,
+                        modifier = Modifier.size(48.dp)
+                    )
+                    Text(
+                        text = "Unfinished Session Found",
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold,
+                        textAlign = TextAlign.Center
+                    )
+                    Text(
+                        text = "It looks like the app was closed unexpectedly while a tracking session was active. What would you like to do with this session?",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        textAlign = TextAlign.Center
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Button(
+                        onClick = { viewModel.continueOrphanedSession() },
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Text("Continue Session")
+                    }
+                    OutlinedButton(
+                        onClick = { viewModel.finishOrphanedSession() },
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = ButtonDefaults.outlinedButtonColors(
+                            contentColor = MaterialTheme.colorScheme.error
+                        ),
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.error)
+                    ) {
+                        Text("Finish & Export Session")
+                    }
+                }
+            }
+        }
+    }
+
+    // Stop Tracking Confirmation Modal
+    if (showStopConfirmation) {
+        AlertDialog(
+            onDismissRequest = { showStopConfirmation = false },
+            title = {
+                Text("Stop Tracking?", fontWeight = FontWeight.Bold)
+            },
+            text = {
+                Text("Are you sure you want to stop tracking? This saves all the data to a CSV and discontinues the current session.")
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        viewModel.stopTracking()
+                        showStopConfirmation = false
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                ) {
+                    Text("Stop Session")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showStopConfirmation = false }) {
+                    Text("Cancel")
+                }
+            }
+        )
     }
 }
 }
@@ -549,6 +893,57 @@ private fun TelemetryItem(label: String, value: String) {
             style = MaterialTheme.typography.bodyMedium,
             fontWeight = FontWeight.Bold,
             color = MaterialTheme.colorScheme.onSurface
+        )
+    }
+}
+
+@Composable
+private fun AggressionSegment(
+    label: String,
+    isActive: Boolean,
+    color: Color,
+    isHighest: Boolean,
+    modifier: Modifier = Modifier
+) {
+    val animatedAlpha by animateFloatAsState(
+        targetValue = if (isActive) 1f else 0.12f,
+        animationSpec = tween(500)
+    )
+
+    val infiniteTransition = rememberInfiniteTransition(label = "pulseHighest")
+    val pulseAlpha by if (isHighest) {
+        infiniteTransition.animateFloat(
+            initialValue = 0.4f,
+            targetValue = 1f,
+            animationSpec = infiniteRepeatable(
+                animation = tween(800, easing = FastOutSlowInEasing),
+                repeatMode = RepeatMode.Reverse
+            ),
+            label = "pulseAlpha"
+        )
+    } else {
+        remember { mutableStateOf(1f) }
+    }
+
+    Box(
+        modifier = modifier
+            .height(48.dp)
+            .clip(RoundedCornerShape(8.dp))
+            .background(
+                color = if (isActive) color.copy(alpha = animatedAlpha * pulseAlpha) else Color.Gray.copy(alpha = 0.08f)
+            )
+            .border(
+                width = 1.dp,
+                color = if (isActive) color.copy(alpha = 0.5f) else Color.Transparent,
+                shape = RoundedCornerShape(8.dp)
+            ),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+            color = if (isActive) Color.White else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
+            textAlign = TextAlign.Center
         )
     }
 }

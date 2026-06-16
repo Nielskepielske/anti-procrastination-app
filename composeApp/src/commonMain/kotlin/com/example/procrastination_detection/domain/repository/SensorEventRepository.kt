@@ -5,6 +5,7 @@ import com.example.procrastination_detection.data.local.entity.SensorEventEntity
 import com.example.procrastination_detection.domain.event.SensorPayload
 import com.example.procrastination_detection.domain.event.AggregatedPayload
 import com.example.procrastination_detection.domain.event.Timestamped
+import com.example.procrastination_detection.domain.session.SessionManager
 
 sealed interface OptimizedDataResult {
     data class Raw(val data: List<Timestamped<SensorPayload>>) : OptimizedDataResult
@@ -14,18 +15,20 @@ interface SensorEventRepository {
     suspend fun saveEvent(payload: SensorPayload, timestamp: Long)
     suspend fun pruneOldEvents(olderThanTimestamp: Long)
 
-    // NEW: Fetch data optimized for the requested time range, with optional sensor filtering
-    suspend fun getOptimizedEventsForRange(start: Long, end: Long, sensorId: String? = null): OptimizedDataResult
+    // Fetch data optimized for the requested time range, with optional sensor and session filtering
+    suspend fun getOptimizedEventsForRange(start: Long, end: Long, sensorId: String? = null, sessionId: String? = null): OptimizedDataResult
 }
 
 
 // Implementation
 
 class SensorEventRepositoryImpl(
-    private val database: AppDatabase
+    private val database: AppDatabase,
+    private val sessionManagerProvider: () -> SessionManager,
+    private val csvReader: com.example.procrastination_detection.domain.pipeline.CsvReader
 ) : SensorEventRepository {
     private val rawDao = database.sensorEventDao()
-    private val compactionDao = database.compactionDao()
+    private val sessionDao = database.sessionDao()
 
     override suspend fun saveEvent(payload: SensorPayload, timestamp: Long) {
         val payloadType = when (payload) {
@@ -34,11 +37,16 @@ class SensorEventRepositoryImpl(
             is SensorPayload.BrowserOCRContext -> "BROWSER_OCR"
             is SensorPayload.MouseMetrics     -> "MOUSE_METRICS"
             is SensorPayload.KeyboardMetrics  -> "KEYBOARD_METRICS"
+            is SensorPayload.SystemIntervention -> "SYSTEM_INTERVENTION"
+            is SensorPayload.AggressionHeat   -> "AGGRESSION_HEAT"
         }
+        val sessionId = sessionManagerProvider().activeSessionFlow.value?.id ?: "unknown_session"
+        
         val entity = SensorEventEntity(
             timestamp = timestamp,
             payloadType = payloadType,
             sensorId = payload.sensorId,
+            sessionId = sessionId,
             payload = payload
         )
         database.sensorEventDao().insertEvent(entity)
@@ -48,21 +56,41 @@ class SensorEventRepositoryImpl(
         database.sensorEventDao().deleteEventsBefore(olderThanTimestamp)
     }
 
-    override suspend fun getOptimizedEventsForRange(start: Long, end: Long, sensorId: String?): OptimizedDataResult {
+    override suspend fun getOptimizedEventsForRange(start: Long, end: Long, sensorId: String?, sessionId: String?): OptimizedDataResult {
         val duration = end - start
-        val oneDayMillis = 86_400_000L
-
-        return if (duration <= oneDayMillis) {
-            val rawList = rawDao.getEventsBetween(start, end, sensorId).map { entity ->
-                Timestamped(timestamp = entity.timestamp, payload = entity.payload)
-            }
-            OptimizedDataResult.Raw(rawList)
+        
+        // Find relevant sessions
+        val relevantSessions = if (sessionId != null) {
+            val session = sessionDao.getSessionById(sessionId)
+            if (session != null) listOf(session) else emptyList()
         } else {
-            val aggregatedList = compactionDao.getHourlyEventsBetween(start, end, sensorId).map { entity ->
-                // Map the hourTimestamp to the generic timestamp field
-                Timestamped(timestamp = entity.hourTimestamp, payload = entity.payload)
-            }
-            OptimizedDataResult.Aggregated(aggregatedList)
+            sessionDao.getSessionsOverlapping(start, end)
         }
+
+        val allEvents = mutableListOf<SensorEventEntity>()
+
+        for (session in relevantSessions) {
+            if (session.status == "ACTIVE" || session.csvFilePath == null) {
+                // Fetch from live database
+                val dbEvents = rawDao.getEventsBetween(start, end, sensorId)
+                    .filter { it.sessionId == session.id }
+                allEvents.addAll(dbEvents)
+            } else {
+                // Fetch from CSV archive
+                val csvFilePath = session.csvFilePath
+                if (csvFilePath != null) {
+                    val csvEvents = csvReader.readSessionEvents(csvFilePath)
+                        .filter { it.timestamp in start..end }
+                        .filter { sensorId == null || it.sensorId == sensorId }
+                    allEvents.addAll(csvEvents)
+                }
+            }
+        }
+
+        val rawList = allEvents.map { entity ->
+            Timestamped(timestamp = entity.timestamp, payload = entity.payload)
+        }.sortedBy { it.timestamp }
+
+        return OptimizedDataResult.Raw(rawList)
     }
 }

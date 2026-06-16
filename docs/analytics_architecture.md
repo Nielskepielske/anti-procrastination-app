@@ -21,6 +21,16 @@ To handle high-frequency sensor data (e.g., every 5 seconds) without crashing th
 
 **Synchronized Fetching:** To ensure that multiple series in a `CombinedChartBlock` align perfectly, the ViewModel calculates a single, consistent `(startTime, endTime)` window for the entire refresh cycle. This window is passed to all strategies, ensuring that their internal `TimeSeriesResampler` logic generates the exact same number of buckets on the same grid alignment, preventing "drifting" or "offset" lines.
 
+### Pillar 4: Session Context Integration
+**Where:** `FlexibleAnalyticsViewModel` & `SessionManager`
+**Purpose:** Scoping data to user-defined session boundaries.
+**Mechanism:** Instead of viewing arbitrary global time ranges, users can select a specific archived tracking session from the UI. The UI resolves the bounds of this session and fetches analytics scoped precisely to the duration of that session. Because stopped sessions are archived to CSV, the UI supports downloading the session data directly for offline analysis via a cross-platform `SessionDownloader`.
+
+### Pillar 5: Combined Chart Normalization
+**Where:** `FlexibleAnalyticsScreen` (UI Layer)
+**Purpose:** Ensure visually accurate comparisons between radically different datasets.
+**Mechanism:** When multiple line charts are grouped into a `CombinedChartBlock`, they often possess completely disjointed Y-axis scales (e.g. 0-10 vs 0-15000). To prevent smaller datasets from being visually flattened, the `FlexibleAnalyticsScreen` iterates through all child lines prior to rendering, determines each line's absolute maximum value, and mathematically scales every point to a 0-100% relative percentage of that maximum. The original absolute max value is appended to the chart legend to retain scale context.
+
 ---
 
 ## Data Flow & Wrappers

@@ -79,6 +79,16 @@ class TelemetryManager(
                                 totalEventsProcessed = nextEvents
                             )
                         }
+                        is SensorPayload.SystemIntervention -> {
+                            current.copy(
+                                totalEventsProcessed = nextEvents
+                            )
+                        }
+                        is SensorPayload.AggressionHeat -> {
+                            current.copy(
+                                totalEventsProcessed = nextEvents
+                            )
+                        }
                     }
                 }
             }

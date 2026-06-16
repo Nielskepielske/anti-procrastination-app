@@ -8,7 +8,9 @@ data class FocusProfile(
     /** Maps each escalation level to the list of InterventionStrategy IDs that fire at that level. */
     val strategyMap: Map<EscalationLevel, List<String>>,
     /** BehaviorSensor IDs that should be running while this profile is active. */
-    val requiredSensorIds: List<String>
+    val requiredSensorIds: List<String>,
+    /** How aggressively to compact the sensor data when the session ends and gets archived to CSV. */
+    val csvGranularity: CsvGranularity
 )
 
 enum class EscalationLevel { GENTLE, FIRM, AGGRESSIVE }
@@ -24,5 +26,6 @@ fun defaultFocusProfile(id: String = (0..1000000).random().toString()) = FocusPr
         EscalationLevel.FIRM       to listOf("LINUX_NUDGE", "OPACITY_FADE"),
         EscalationLevel.AGGRESSIVE to listOf("LINUX_NUDGE", "OPACITY_FADE", "APP_KILLER"),
     ),
-    requiredSensorIds = listOf("WINDOW_TRACKER")
+    requiredSensorIds = listOf("WINDOW_TRACKER"),
+    csvGranularity = CsvGranularity.RAW
 )

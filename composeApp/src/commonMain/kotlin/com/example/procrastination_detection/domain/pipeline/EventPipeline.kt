@@ -86,6 +86,8 @@ class EventPipeline (
                     // Metrics payloads carry no inherent category — BehaviorAnalysisEngine reads them
                     is SensorPayload.MouseMetrics -> CategoryMatch(Category.NEUTRAL, null)
                     is SensorPayload.KeyboardMetrics -> CategoryMatch(Category.NEUTRAL, null)
+                    is SensorPayload.SystemIntervention -> CategoryMatch(Category.NEUTRAL, null)
+                    is SensorPayload.AggressionHeat -> CategoryMatch(Category.NEUTRAL, null)
                 }
                 
                 val category = categoryMatch.category

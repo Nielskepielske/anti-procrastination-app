@@ -18,10 +18,21 @@ import com.example.procrastination_detection.data.local.AnalyticsConfigStore
 
 import com.example.procrastination_detection.domain.sensor.SensorManager
 
+import com.example.procrastination_detection.data.local.dao.SessionDao
+import com.example.procrastination_detection.data.local.entity.SessionEntity
+
+import com.example.procrastination_detection.domain.pipeline.SessionDownloader
+import com.example.procrastination_detection.domain.repository.SensorEventRepository
+import com.example.procrastination_detection.domain.repository.OptimizedDataResult
+import com.example.procrastination_detection.domain.event.SensorPayload
+
 class FlexibleAnalyticsViewModel(
     strategies: Set<DashboardDataStrategy>,
     private val sensorManager: SensorManager,
-    private val configStore: AnalyticsConfigStore
+    private val configStore: AnalyticsConfigStore,
+    private val sessionDao: SessionDao,
+    private val sessionDownloader: SessionDownloader,
+    private val sensorEventRepository: SensorEventRepository
 ) : ViewModel() {
 
     private val strategyMap = strategies.associateBy { it.dataTypeId }
@@ -81,6 +92,38 @@ class FlexibleAnalyticsViewModel(
     // 1. Keep track of the live update loop
     private var liveUpdateJob: Job? = null
 
+    private val _sessions = MutableStateFlow<List<SessionEntity>>(emptyList())
+    val sessions: StateFlow<List<SessionEntity>> = _sessions.asStateFlow()
+
+    private val _selectedSessionId = MutableStateFlow<String?>(null)
+    val selectedSessionId: StateFlow<String?> = _selectedSessionId.asStateFlow()
+
+    fun selectSession(sessionId: String?) {
+        _selectedSessionId.value = sessionId
+        // Refresh data
+        val currentBlocks = _blocks.value
+        viewModelScope.launch {
+            currentBlocks.forEach { block ->
+                if (block is SingleChartBlock) {
+                    fetchBlockDataQuietly(block)
+                } else if (block is CombinedChartBlock) {
+                    block.childBlocks.forEach { child -> fetchBlockDataQuietly(child) }
+                }
+            }
+        }
+    }
+
+    fun downloadSelectedSession() {
+        val sessionId = _selectedSessionId.value ?: return
+        val session = _sessions.value.find { it.id == sessionId } ?: return
+        val filePath = session.csvFilePath ?: return
+
+        viewModelScope.launch {
+            val suggestedName = "session_${sessionId.take(8)}.csv"
+            sessionDownloader.downloadSession(filePath, suggestedName)
+        }
+    }
+
     init {
         viewModelScope.launch {
             val configs = configStore.configFlow.first()
@@ -96,14 +139,22 @@ class FlexibleAnalyticsViewModel(
                 }
             } else {
                 val defaultBlocks = listOf(
-                    SingleChartBlock("1", "Focus Score", TimeRange.DAILY, "PROGRESS", "focus_score"),
-                    SingleChartBlock("2", "Top Activities", TimeRange.DAILY, "BAR", "top_activities"),
-                    SingleChartBlock("3", "Switch Frequency", TimeRange.HOURLY, "LINE", "switch_frequency")
+                    SingleChartBlock(id = "1", title = "Focus Score", timeRange = TimeRange.DAILY, combinationGroup = "PROGRESS", dataType = "focus_score"),
+                    SingleChartBlock(id = "2", title = "Top Activities", timeRange = TimeRange.DAILY, combinationGroup = "BAR", dataType = "top_activities"),
+                    SingleChartBlock(id = "3", title = "Switch Frequency", timeRange = TimeRange.HOURLY, combinationGroup = "LINE", dataType = "switch_frequency")
                 )
                 _blocks.value = defaultBlocks
                 saveCurrentConfig()
                 defaultBlocks.forEach { fetchBlockDataQuietly(it) }
             }
+            
+            // Load sessions
+            viewModelScope.launch {
+                sessionDao.getAllSessionsFlow().collect { sessionsList ->
+                    _sessions.value = sessionsList.sortedByDescending { it.startTime }
+                }
+            }
+
             startLiveUpdateLoop()
         }
     }
@@ -368,6 +419,51 @@ class FlexibleAnalyticsViewModel(
         }
     }
 
+    fun toggleInterventions(blockId: String) {
+        val currentBlocks = _blocks.value.toMutableList()
+        val index = currentBlocks.indexOfFirst { it.id == blockId }
+        if (index == -1) return
+
+        val block = currentBlocks[index]
+        if (block is SingleChartBlock) {
+            val updatedBlock = block.copy(showInterventions = !block.showInterventions, chartData = null)
+            currentBlocks[index] = updatedBlock
+            _blocks.value = currentBlocks
+            saveCurrentConfig()
+
+            viewModelScope.launch { fetchBlockDataQuietly(updatedBlock) }
+        } else if (block is CombinedChartBlock) {
+            val newState = !block.showInterventions
+            val updatedChildren = block.childBlocks.map { it.copy(showInterventions = newState, chartData = null) }
+            val updatedBlock = block.copy(showInterventions = newState, childBlocks = updatedChildren)
+            currentBlocks[index] = updatedBlock
+            _blocks.value = currentBlocks
+            saveCurrentConfig()
+
+            viewModelScope.launch {
+                updatedChildren.forEach { fetchBlockDataQuietly(it) }
+            }
+        }
+    }
+
+    private suspend fun fetchInterventionOverlays(start: Long, end: Long): List<InterventionOverlay> {
+        val result = sensorEventRepository.getOptimizedEventsForRange(start, end, sessionId = _selectedSessionId.value)
+        return if (result is OptimizedDataResult.Raw) {
+            result.data
+                .filter { it.payload is SensorPayload.SystemIntervention }
+                .map {
+                    val intervention = it.payload as SensorPayload.SystemIntervention
+                    InterventionOverlay(
+                        timestamp = it.timestamp,
+                        strategyId = intervention.strategyId,
+                        aggressionLevel = intervention.aggressionLevel
+                    )
+                }
+        } else {
+            emptyList()
+        }
+    }
+
     /**
      * Fetches data and updates the state WITHOUT setting chartData to null first.
      * This ensures the UI updates smoothly without flashing a loading spinner.
@@ -386,8 +482,20 @@ class FlexibleAnalyticsViewModel(
         // 1. Find the strategy for this block's data type
         val strategy = strategyMap[block.dataType]
 
-        // 2. Let the strategy fetch and format the data
-        val data = strategy?.generateChartData(start, end, block.sensorId)
+        // 2. Let the strategy fetch and format the data passing the timeRange
+        var data = strategy?.generateChartData(
+            startTime = start,
+            endTime = end,
+            timeRange = block.timeRange,
+            sensorId = block.sensorId,
+            sessionId = _selectedSessionId.value
+        )
+
+        // 2b. Add Intervention Overlays if enabled and data is a Line chart
+        if (block.showInterventions && data is ChartData.Line) {
+            val overlays = fetchInterventionOverlays(start, end)
+            data = data.copy(overlays = overlays)
+        }
 
         // 3. Update the state
         val currentBlocks = _blocks.value.toMutableList()
@@ -422,14 +530,47 @@ class FlexibleAnalyticsViewModel(
 
     private fun calculateTimeWindow(range: TimeRange): Pair<Long, Long> {
         val now = Clock.System.now().toEpochMilliseconds()
-        val start = when (range) {
-            TimeRange.HOURLY -> now - 3_600_000L
-            TimeRange.DAILY -> now - 86_400_000L
-            TimeRange.WEEKLY -> now - (86_400_000L * 7)
+        val sessionId = _selectedSessionId.value
+
+        val (start, end) = if (sessionId != null) {
+            val session = _sessions.value.find { it.id == sessionId }
+            if (session != null) {
+                Pair(session.startTime, session.endTime ?: now)
+            } else {
+                Pair(now - 86_400_000L, now)
+            }
+        } else {
+            // All Data (Live + Archived) -> Look back at most 7 days
+            Pair(now - 604_800_000L, now)
         }
-        return Pair(start, now)
+
+        // Minimum range to plot (Hourly: 1h, Daily: 1d, Weekly: 7d)
+        val minSpan = when (range) {
+            TimeRange.HOURLY -> 3_600_000L
+            TimeRange.DAILY -> 86_400_000L
+            TimeRange.WEEKLY -> 604_800_000L
+        }
+
+        // Maximum range to plot per category for performance and readability bounds
+        val maxSpan = when (range) {
+            TimeRange.HOURLY -> 86_400_000L      // 24 hours max scrollback for minute-level buckets
+            TimeRange.DAILY -> 604_800_000L      // 7 days max scrollback for hour-level buckets
+            TimeRange.WEEKLY -> 2_592_000_000L   // 30 days max scrollback for day-level buckets
+        }
+
+        var adjustedStart = start
+        val currentDuration = end - adjustedStart
+
+        // 1. Zero-padding logic: pad start if session duration is shorter than minimum range
+        if (currentDuration < minSpan) {
+            adjustedStart = end - minSpan
+        }
+
+        // 2. Performance cap logic: limit maximum duration allowed
+        if (end - adjustedStart > maxSpan) {
+            adjustedStart = end - maxSpan
+        }
+
+        return Pair(adjustedStart, end)
     }
-
-
-
 }

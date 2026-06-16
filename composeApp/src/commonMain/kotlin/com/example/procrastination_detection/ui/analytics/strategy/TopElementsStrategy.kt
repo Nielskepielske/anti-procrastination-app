@@ -3,6 +3,7 @@ package com.example.procrastination_detection.ui.analytics.strategy
 import androidx.compose.ui.graphics.Color
 import com.example.procrastination_detection.data.local.dao.AppUsageDao
 import com.example.procrastination_detection.domain.model.analytics.ChartData
+import com.example.procrastination_detection.domain.model.analytics.TimeRange
 import kotlinx.coroutines.flow.firstOrNull
 import kotlin.reflect.KClass
 
@@ -18,7 +19,9 @@ class TopElementsStrategy(
     override suspend fun generateChartData(
         startTime: Long,
         endTime: Long,
-        sensorId: String?
+        timeRange: TimeRange,
+        sensorId: String?,
+        sessionId: String?
     ): ChartData? {
         val startDay = startTime / 86400000L
         val endDay = endTime / 86400000L

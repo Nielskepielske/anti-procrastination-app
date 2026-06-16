@@ -13,6 +13,9 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.RemoveCircle
 import androidx.compose.material.icons.filled.DragIndicator
+import androidx.compose.material.icons.filled.Download
+import androidx.compose.material.icons.filled.Visibility
+import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.ui.draw.alpha
 import androidx.compose.material3.*
@@ -44,6 +47,26 @@ import com.example.procrastination_detection.domain.model.analytics.*
 import com.example.procrastination_detection.ui.analytics.components.*
 import androidx.compose.animation.core.*
 import androidx.compose.ui.graphics.graphicsLayer
+import kotlinx.datetime.Instant
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toLocalDateTime
+
+fun formatSessionTimeRange(startTime: Long, endTime: Long?): String {
+    val tz = TimeZone.currentSystemDefault()
+    val startDt = Instant.fromEpochMilliseconds(startTime).toLocalDateTime(tz)
+    
+    val endStr = if (endTime != null && endTime > 0) {
+        val endDt = Instant.fromEpochMilliseconds(endTime).toLocalDateTime(tz)
+        if (startDt.date == endDt.date) {
+            "${endDt.hour.toString().padStart(2, '0')}:${endDt.minute.toString().padStart(2, '0')}"
+        } else {
+            "${endDt.date} ${endDt.hour.toString().padStart(2, '0')}:${endDt.minute.toString().padStart(2, '0')}"
+        }
+    } else {
+        "Now"
+    }
+    return "${startDt.date} ${startDt.hour.toString().padStart(2, '0')}:${startDt.minute.toString().padStart(2, '0')} - $endStr"
+}
 
 @Composable
 fun SlidingTimeRangeSegmentedControl(
@@ -208,6 +231,8 @@ val chartRegistry = mapOf<KClass<out ChartData>, @Composable (ChartData) -> Unit
 @Composable
 fun FlexibleAnalyticsScreen(viewModel: FlexibleAnalyticsViewModel) {
     val blocks by viewModel.blocks.collectAsState()
+    val sessions by viewModel.sessions.collectAsState()
+    val selectedSessionId by viewModel.selectedSessionId.collectAsState()
 
     var showAddDialog by remember { mutableStateOf(false) }
 
@@ -290,6 +315,64 @@ fun FlexibleAnalyticsScreen(viewModel: FlexibleAnalyticsViewModel) {
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 item { Spacer(Modifier.height(16.dp)) }
+                
+                // Session Selector
+                item {
+                    var sessionMenuExpanded by remember { mutableStateOf(false) }
+                    val selectedSession = sessions.find { it.id == selectedSessionId }
+                    val displayText = if (selectedSessionId == null) "All Data (Live + Archived)" 
+                        else "${formatSessionTimeRange(selectedSession!!.startTime, selectedSession.endTime)} (${selectedSession.status})"
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text(
+                            text = "Analytics Scope",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            if (selectedSession != null && selectedSession.csvFilePath != null) {
+                                IconButton(onClick = { viewModel.downloadSelectedSession() }) {
+                                    Icon(
+                                        imageVector = Icons.Default.Download,
+                                        contentDescription = "Download Session CSV",
+                                        tint = MaterialTheme.colorScheme.primary
+                                    )
+                                }
+                            }
+                            Box {
+                                OutlinedButton(onClick = { sessionMenuExpanded = true }) {
+                                    Text(displayText)
+                                }
+                                DropdownMenu(
+                                expanded = sessionMenuExpanded,
+                                onDismissRequest = { sessionMenuExpanded = false }
+                            ) {
+                                DropdownMenuItem(
+                                    text = { Text("All Data (Live + Archived)") },
+                                    onClick = {
+                                        viewModel.selectSession(null)
+                                        sessionMenuExpanded = false
+                                    }
+                                )
+                                sessions.forEach { session ->
+                                    DropdownMenuItem(
+                                        text = { Text("${formatSessionTimeRange(session.startTime, session.endTime)} (${session.status})") },
+                                        onClick = {
+                                            viewModel.selectSession(session.id)
+                                            sessionMenuExpanded = false
+                                        }
+                                    )
+                                }
+                            }
+                        }
+                        }
+                    }
+                }
+
                 items(blocks, key = { it.id }) { block ->
                     DashboardBlockWrapper(
                         block = block,
@@ -492,6 +575,22 @@ fun DashboardBlockWrapper(
                             }
                         }
                     }
+                    // Intervention Overlay Toggle
+                    val hasLineChart = when (block) {
+                        is SingleChartBlock -> block.chartData is ChartData.Line
+                        is CombinedChartBlock -> block.childBlocks.all { it.chartData is ChartData.Line }
+                    }
+                    if (hasLineChart) {
+                        val isShowing = block.showInterventions
+                        IconButton(onClick = { viewModel.toggleInterventions(block.id) }, modifier = Modifier.size(24.dp)) {
+                            Icon(
+                                imageVector = if (isShowing) Icons.Default.Visibility else Icons.Default.VisibilityOff,
+                                contentDescription = "Toggle Intervention Overlay",
+                                tint = if (isShowing) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+                            )
+                        }
+                    }
+
                     IconButton(onClick = { showEditDialog = true }, modifier = Modifier.size(24.dp)) {
                         Icon(Icons.Default.Edit, contentDescription = "Edit block")
                     }
@@ -541,18 +640,31 @@ fun DashboardBlockWrapper(
                         val colors =
                             listOf(Color.Blue, Color.Red, Color(0xFF4CAF50), Color(0xFFFF9800), Color(0xFF9C27B0))
                         val mergedLines = block.childBlocks.flatMapIndexed { childIndex, child ->
-                            val lines = (child.chartData as ChartData.Line).lines
+                            val chartLine = child.chartData as ChartData.Line
+                            val lines = chartLine.lines
                             val customColor = child.colorHex?.let { hexToColor(it) }
+                            val childMax = chartLine.maxPoint.coerceAtLeast(1f) // Avoid division by zero
 
                             lines.mapIndexed { lineIndex, line ->
                                 val color = customColor ?: colors[(childIndex * 10 + lineIndex) % colors.size]
-                                line.copy(color = color, name = "${child.title} - ${line.name}")
+                                // Normalize points to 0-100 scale
+                                val normalizedPoints = line.points.map { (it / childMax) * 100f }
+                                
+                                // Format the max value nicely for the legend
+                                val formattedMax = if (childMax % 1f == 0f) childMax.toInt().toString() else ((childMax * 10).toInt() / 10f).toString()
+                                
+                                line.copy(
+                                    color = color, 
+                                    name = "${child.title} - ${line.name} (Max: $formattedMax${chartLine.valueSuffix})",
+                                    points = normalizedPoints
+                                )
                             }
                         }
-                        val maxPoint = block.childBlocks.maxOf { (it.chartData as ChartData.Line).maxPoint }
+                        val maxPoint = 100f
                         val labels = (block.childBlocks.first().chartData as ChartData.Line).xCategories
+                        val mergedOverlays = block.childBlocks.flatMap { (it.chartData as ChartData.Line).overlays }.distinctBy { it.timestamp }
 
-                        val mergedChartData = ChartData.Line(mergedLines, maxPoint, labels)
+                        val mergedChartData = ChartData.Line(mergedLines, maxPoint, labels, valueSuffix = "%", overlays = mergedOverlays)
                         LineChartComposable(mergedChartData)
                     } else {
                         Column(modifier = Modifier.fillMaxWidth()) {

@@ -19,7 +19,12 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        val androidModule = module { single<CompactionScheduler> { AndroidCompactionScheduler(context = get()) } }
+        val androidModule = module { 
+            single<CompactionScheduler> { AndroidCompactionScheduler(context = get()) }
+            single<com.example.procrastination_detection.domain.pipeline.SessionDownloader> { 
+                com.example.procrastination_detection.platform.android.AndroidSessionDownloader(context = get()) 
+            }
+        }
 
 //        AndroidAppBridge.applicationContext = this.applicationContext
 //

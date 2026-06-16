@@ -26,6 +26,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.DialogProperties
 import com.example.procrastination_detection.domain.model.EscalationLevel
 import com.example.procrastination_detection.domain.model.FocusProfile
+import com.example.procrastination_detection.domain.model.CsvGranularity
 
 /**
  * Converts system snake_case names like "LINUX_NUDGE" or "WINDOW_TRACKER"
@@ -310,6 +311,7 @@ fun EditProfileDialog(
     var escalationLevel by remember { mutableStateOf(profile.escalationLevel) }
     var selectedSensors by remember { mutableStateOf(profile.requiredSensorIds.toSet()) }
     var strategyMap by remember { mutableStateOf(profile.strategyMap) }
+    var csvGranularity by remember { mutableStateOf(profile.csvGranularity) }
 
     val isDark = isSystemInDarkTheme()
 
@@ -386,6 +388,39 @@ fun EditProfileDialog(
                                 selected = escalationLevel == level,
                                 onClick = { escalationLevel = level },
                                 label = { Text(formatSystemName(level.name)) },
+                                shape = RoundedCornerShape(8.dp),
+                                modifier = Modifier.weight(1.0f)
+                            )
+                        }
+                    }
+                }
+
+                // Section 2.5: CSV Data Granularity
+                item {
+                    HorizontalDivider(color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f))
+                    Spacer(Modifier.height(12.dp))
+                    Text(
+                        text = "Data Retention Granularity",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                    Spacer(Modifier.height(2.dp))
+                    Text(
+                        text = "How much sensor data to keep when a session finishes. High granularity takes more space.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(Modifier.height(8.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        CsvGranularity.values().forEach { granularity ->
+                            FilterChip(
+                                selected = csvGranularity == granularity,
+                                onClick = { csvGranularity = granularity },
+                                label = { Text(formatSystemName(granularity.name)) },
                                 shape = RoundedCornerShape(8.dp),
                                 modifier = Modifier.weight(1.0f)
                             )
@@ -560,7 +595,8 @@ fun EditProfileDialog(
                         thresholdMinutes = threshold.toInt(),
                         escalationLevel = escalationLevel,
                         strategyMap = strategyMap,
-                        requiredSensorIds = selectedSensors.toList()
+                        requiredSensorIds = selectedSensors.toList(),
+                        csvGranularity = csvGranularity
                     ))
                 },
                 shape = RoundedCornerShape(8.dp)

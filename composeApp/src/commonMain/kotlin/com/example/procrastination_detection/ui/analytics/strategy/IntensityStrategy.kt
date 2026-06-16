@@ -4,7 +4,10 @@ import androidx.compose.ui.graphics.Color
 import com.example.procrastination_detection.data.local.dao.SensorEventDao
 import com.example.procrastination_detection.domain.event.SensorPayload
 import com.example.procrastination_detection.domain.model.analytics.ChartData
+import com.example.procrastination_detection.domain.model.analytics.TimeRange
 import com.example.procrastination_detection.domain.pipeline.resampling.WindowedReducer
+import com.example.procrastination_detection.domain.repository.SensorEventRepository
+import com.example.procrastination_detection.domain.repository.OptimizedDataResult
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
 import kotlin.collections.component1
@@ -12,7 +15,7 @@ import kotlin.collections.component2
 import kotlin.reflect.KClass
 
 class IntensityStrategy(
-    private val sensorEventDao: SensorEventDao,
+    private val repository: SensorEventRepository,
     private val reducer: WindowedReducer<SensorPayload>
 ) : DashboardDataStrategy {
 
@@ -24,16 +27,24 @@ class IntensityStrategy(
     override suspend fun generateChartData(
         startTime: Long,
         endTime: Long,
-        sensorId: String?
-    ): ChartData? {
-        val events = sensorEventDao.getEventsBetween(startTime, endTime, sensorId)
+        timeRange: TimeRange,
+        sensorId: String?,
+        sessionId: String?
+    ): ChartData.Line? {
+        val result = repository.getOptimizedEventsForRange(startTime, endTime, sensorId, sessionId)
+        val events = (result as? OptimizedDataResult.Raw)?.data?.map { it.payload } ?: return null
         
-        val duration = endTime - startTime
-        val bucketSize = if (duration <= 3_600_000L) 60_000L else 3_600_000L
+        val bucketSize = when (timeRange) {
+            TimeRange.HOURLY -> 60_000L      // 1 minute
+            TimeRange.DAILY -> 3_600_000L    // 1 hour
+            TimeRange.WEEKLY -> 86_400_000L  // 1 day
+        }
 
         // Use the uniform TimeSeriesResampler
+        val timestampedEvents = (result as? OptimizedDataResult.Raw)?.data ?: return null
+
         val buckets = com.example.procrastination_detection.domain.pipeline.resampling.TimeSeriesResampler.bucketData(
-            data = events,
+            data = timestampedEvents,
             startTime = startTime,
             endTime = endTime,
             bucketSizeMillis = bucketSize,

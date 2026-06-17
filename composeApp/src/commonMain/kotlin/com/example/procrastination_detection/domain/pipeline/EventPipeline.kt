@@ -86,6 +86,8 @@ class EventPipeline (
                     // Metrics payloads carry no inherent category — BehaviorAnalysisEngine reads them
                     is SensorPayload.MouseMetrics -> CategoryMatch(Category.NEUTRAL, null)
                     is SensorPayload.KeyboardMetrics -> CategoryMatch(Category.NEUTRAL, null)
+                    is SensorPayload.SystemIntervention -> CategoryMatch(Category.NEUTRAL, null)
+                    is SensorPayload.AggressionHeat -> CategoryMatch(Category.NEUTRAL, null)
                 }
                 
                 val category = categoryMatch.category
@@ -122,7 +124,13 @@ class EventPipeline (
                     category = category
                 )
 
-                _currentState.value = processedEvent
+                // Only update the active context state for actual context shifts, 
+                // so telemetry (like MouseMetrics) doesn't overwrite the current app in the UI/Engines.
+                if (payload is SensorPayload.AppSwitch || 
+                    payload is SensorPayload.TitleChange || 
+                    payload is SensorPayload.BrowserOCRContext) {
+                    _currentState.value = processedEvent
+                }
 
                 // Save the raw payload to the Room Database (Fire and forget)
                 launch {

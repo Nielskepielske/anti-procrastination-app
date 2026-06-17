@@ -16,6 +16,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
 
+@Deprecated("No longer used. Replaced by EventPipeline and SensorManager.")
 class TrackingEngine(
     private val sessionRepository: SessionRepository,
     private val focusEnforcerEngine: FocusEnforcerEngine,

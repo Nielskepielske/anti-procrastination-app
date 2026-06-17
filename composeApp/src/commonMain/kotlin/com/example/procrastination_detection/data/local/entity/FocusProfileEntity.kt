@@ -21,5 +21,6 @@ data class FocusProfileEntity(
     val thresholdMinutes: Int,
     val escalationLevel: String,       // EscalationLevel enum name
     val strategyMapJson: String,       // JSON: Map<EscalationLevel.name, List<String>>
-    val activeSensorIdsJson: String    // JSON: List<String>
+    val activeSensorIdsJson: String,   // JSON: List<String>
+    val csvGranularity: String         // CsvGranularity enum name
 )

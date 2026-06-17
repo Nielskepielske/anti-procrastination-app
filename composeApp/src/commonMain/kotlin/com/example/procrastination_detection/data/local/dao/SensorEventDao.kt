@@ -18,6 +18,12 @@ interface SensorEventDao {
     @Query("DELETE FROM sensor_events WHERE timestamp < :beforeTimestamp")
     suspend fun deleteEventsBefore(beforeTimestamp: Long)
 
+    @Query("DELETE FROM sensor_events WHERE sessionId = :sessionId")
+    suspend fun deleteEventsForSession(sessionId: String)
+
+    @Query("SELECT * FROM sensor_events WHERE sessionId = :sessionId ORDER BY timestamp ASC")
+    suspend fun getEventsForSession(sessionId: String): List<SensorEventEntity>
+
     // Behavioral analytics: count events of a specific type, bucketed by hour
     // hourBucket = timestamp / 3600000  (i.e. epoch hour index)
     @Query("""

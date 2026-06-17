@@ -13,6 +13,8 @@ import androidx.compose.material3.Text
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.width
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
@@ -24,7 +26,19 @@ import com.example.procrastination_detection.ui.profile.ProfileManagerScreen
 import com.example.procrastination_detection.ui.analytics.AnalyticsScreen
 import com.example.procrastination_detection.ui.analytics.FlexibleAnalyticsScreen
 import com.example.procrastination_detection.ui.theme.AppTheme
+import com.example.procrastination_detection.domain.session.SessionManager
+import org.koin.compose.koinInject
 import org.koin.compose.viewmodel.koinViewModel
+import androidx.compose.material3.Surface
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.TextButton
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.height
+import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.launch
 
 
 @Composable
@@ -32,6 +46,10 @@ fun App() {
   val navController = rememberNavController()
   val navBackStackEntry by navController.currentBackStackEntryAsState()
   val currentRoute = navBackStackEntry?.destination?.route
+
+  val sessionManager: SessionManager = koinInject()
+  val orphanedSession by sessionManager.orphanedSessionFlow.collectAsState()
+  val scope = rememberCoroutineScope()
 
   AppTheme {
     Scaffold(
@@ -81,8 +99,36 @@ fun App() {
           ProfileManagerScreen(viewModel = koinViewModel())
         }
         composable<Screen.Analytics> {
-//          AnalyticsScreen(viewModel = koinViewModel())
           FlexibleAnalyticsScreen(viewModel = koinViewModel())
+        }
+      }
+    }
+    
+    // Blocking overlay for orphaned sessions
+    if (orphanedSession != null) {
+      Dialog(
+        onDismissRequest = { /* Blocked */ },
+        properties = DialogProperties(dismissOnBackPress = false, dismissOnClickOutside = false)
+      ) {
+        Surface(shape = androidx.compose.foundation.shape.RoundedCornerShape(16.dp)) {
+          Column(modifier = Modifier.padding(24.dp)) {
+            Text("Recovery: Active Session Detected", style = androidx.compose.material3.MaterialTheme.typography.headlineSmall)
+            Spacer(modifier = Modifier.height(16.dp))
+            Text("An active tracking session was detected from a previous run. The app may have crashed or was closed unexpectedly.")
+            Spacer(modifier = Modifier.height(24.dp))
+            androidx.compose.foundation.layout.Row(
+              horizontalArrangement = androidx.compose.foundation.layout.Arrangement.End,
+              modifier = Modifier.fillMaxWidth()
+            ) {
+              TextButton(onClick = { scope.launch { sessionManager.finishOrphanedSession() } }) {
+                Text("Finish Session & Archive")
+              }
+              Spacer(modifier = Modifier.width(8.dp))
+              androidx.compose.material3.Button(onClick = { scope.launch { sessionManager.continueOrphanedSession() } }) {
+                Text("Continue Tracking")
+              }
+            }
+          }
         }
       }
     }

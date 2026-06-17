@@ -7,7 +7,11 @@ import com.example.procrastination_detection.helpers.BrowserAnalyserConfig
 import com.example.procrastination_detection.helpers.LocalUrlExtractor
 import com.example.procrastination_detection.helpers.takeScreenshot
 import com.example.procrastination_detection.domain.sensor.BehaviorSensor
+import com.example.procrastination_detection.domain.sensor.SensorType
 import kotlinx.coroutines.*
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlin.coroutines.coroutineContext
@@ -18,9 +22,12 @@ class BrowserAnalyserEngine(
     private val config: BrowserAnalyserConfig = BrowserAnalyserConfig(),
     private val scope: CoroutineScope = CoroutineScope(Dispatchers.Default + SupervisorJob())
 ) : BehaviorSensor {
-    override val id: String = "BROWSER_ANALYSER_SENSOR"
+    override val type: SensorType = SensorType.BROWSER_ANALYSER_SENSOR
     private var trackingJob: Job? = null
     private val mutex = Mutex()
+
+    private val _isActive = MutableStateFlow(false)
+    val isActiveFlow: StateFlow<Boolean> = _isActive.asStateFlow()
 
     /**
      * Call this from your existing application tracking system.
@@ -44,6 +51,7 @@ class BrowserAnalyserEngine(
                 trackingJob = scope.launch {
                     trackingLoop()
                 }
+                _isActive.value = true
             }
         }
     }
@@ -56,6 +64,7 @@ class BrowserAnalyserEngine(
                     trackingJob?.cancel()
                     trackingJob = null
                 }
+                _isActive.value = false
             }
         }
     }
@@ -85,7 +94,7 @@ class BrowserAnalyserEngine(
                             SensorPayload.BrowserOCRContext(
                                 url = url,
                                 windowTitle = currentTitle ?: url,
-                                sensorId = id
+                                sensorId = type.name
                             )
                         )
                     } else {

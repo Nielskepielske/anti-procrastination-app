@@ -52,7 +52,8 @@ class ProfileViewModel(
                     EscalationLevel.FIRM to listOf("LINUX_NUDGE"),
                     EscalationLevel.AGGRESSIVE to listOf("LINUX_NUDGE")
                 ),
-                requiredSensorIds = listOf("WINDOW_TRACKER")
+                requiredSensorIds = listOf("WINDOW_TRACKER"),
+                csvGranularity = com.example.procrastination_detection.domain.model.CsvGranularity.RAW
             )
             focusProfileRepository.addProfile(newProfile)
         }

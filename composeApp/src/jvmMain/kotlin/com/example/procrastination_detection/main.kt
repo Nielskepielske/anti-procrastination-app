@@ -39,6 +39,7 @@ import com.example.procrastination_detection.intervention.LinuxNotificationStrat
 import com.example.procrastination_detection.platform.background.DesktopCompactionScheduler
 //import com.example.procrastination_detection.repositories.LocalAppRepository
 import com.example.procrastination_detection.sensor.LinuxWindowTracker
+import com.example.procrastination_detection.sensor.LinuxMouseTracker
 import com.mmk.kmpnotifier.extensions.composeDesktopResourcesPath
 import com.mmk.kmpnotifier.notification.NotificationImage
 import com.mmk.kmpnotifier.notification.Notifier
@@ -60,8 +61,11 @@ fun main() = application {
     // Define Linux-specific dependencies
     val linuxModule = module {
         // Register sensors to the toolbox
-        single<BehaviorSensor> {
+        single<BehaviorSensor>(org.koin.core.qualifier.named("windowTracker")) {
             LinuxWindowTracker(eventPipeline = get(), scope = applicationScope)
+        }
+        single<BehaviorSensor>(org.koin.core.qualifier.named("mouseTracker")) {
+            LinuxMouseTracker(eventPipeline = get(), scope = applicationScope)
         }
         // Give the whole toolbox to the Manager
         single{
@@ -77,6 +81,11 @@ fun main() = application {
 
         // Add Linux NotificationStrategy to the toolbox
         single<InterventionStrategy> { LinuxNotificationStrategy() }
+
+        // File Exporter for CSV archiving
+        single<com.example.procrastination_detection.domain.pipeline.FileExporter> { com.example.procrastination_detection.platform.desktop.DesktopFileExporter() }
+        single<com.example.procrastination_detection.domain.pipeline.SessionDownloader> { com.example.procrastination_detection.platform.desktop.DesktopSessionDownloader() }
+        single<com.example.procrastination_detection.domain.pipeline.CsvReader> { com.example.procrastination_detection.platform.desktop.DesktopCsvReader() }
 
         // Compaction Scheduler
         single<CompactionScheduler> {
@@ -106,7 +115,7 @@ fun main() = application {
     eventPipeline.start(applicationScope)
 
     val sensorManager = koin.get<SensorManager>()
-    sensorManager.startAllActiveSensors()
+    // Tracking is no longer auto-started here. It's managed by SessionManager.
 
     val timerEngine = koin.get<FocusTimerEngine>()
     timerEngine.startListening()

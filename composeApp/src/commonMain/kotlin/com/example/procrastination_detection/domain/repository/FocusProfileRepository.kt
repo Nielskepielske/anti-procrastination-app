@@ -3,18 +3,24 @@ package com.example.procrastination_detection.domain.repository
 import com.example.procrastination_detection.data.local.ActiveProfileStore
 import com.example.procrastination_detection.data.local.dao.FocusProfileDao
 import com.example.procrastination_detection.data.local.entity.FocusProfileEntity
+import com.example.procrastination_detection.domain.model.CsvGranularity
 import com.example.procrastination_detection.domain.model.EscalationLevel
 import com.example.procrastination_detection.domain.model.FocusProfile
 import com.example.procrastination_detection.domain.sensor.SensorManager
 import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
 
 class FocusProfileRepository(
     private val focusProfileDao: FocusProfileDao,
     private val activeProfileStore: ActiveProfileStore,
-    private val sensorManager: SensorManager
+    private val sensorManager: SensorManager,
+    private val scope: CoroutineScope
 ) {
     private val json = Json { ignoreUnknownKeys = true }
+
+
 
     val allProfilesFlow: Flow<List<FocusProfile>> = focusProfileDao.getAllProfiles()
         .onEach { entities ->
@@ -37,6 +43,17 @@ class FocusProfileRepository(
                 }
             }
         }.distinctUntilChanged()
+
+    init {
+        scope.launch {
+            activeProfileFlow.collect { profile ->
+                if (profile != null) {
+                    println("FocusProfileRepository: 🔄 Startup/dynamic profile loaded: '${profile.name}'. Applying to SensorManager.")
+                    sensorManager.applyProfile(profile)
+                }
+            }
+        }
+    }
 
     suspend fun addProfile(profile: FocusProfile) {
         focusProfileDao.upsertProfile(profile.toEntity())
@@ -71,7 +88,8 @@ class FocusProfileRepository(
             thresholdMinutes = thresholdMinutes,
             escalationLevel = EscalationLevel.valueOf(escalationLevel),
             strategyMap = json.decodeFromString(strategyMapJson),
-            requiredSensorIds = json.decodeFromString(activeSensorIdsJson)
+            requiredSensorIds = json.decodeFromString(activeSensorIdsJson),
+            csvGranularity = try { CsvGranularity.valueOf(csvGranularity) } catch (e: Exception) { CsvGranularity.RAW }
         )
     }
 
@@ -82,7 +100,8 @@ class FocusProfileRepository(
             thresholdMinutes = thresholdMinutes,
             escalationLevel = escalationLevel.name,
             strategyMapJson = json.encodeToString(strategyMap),
-            activeSensorIdsJson = json.encodeToString(requiredSensorIds)
+            activeSensorIdsJson = json.encodeToString(requiredSensorIds),
+            csvGranularity = csvGranularity.name
         )
     }
 }

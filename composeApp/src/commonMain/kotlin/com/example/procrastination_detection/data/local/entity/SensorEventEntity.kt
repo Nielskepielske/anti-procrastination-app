@@ -10,5 +10,6 @@ data class SensorEventEntity(
     val timestamp: Long,
     val payloadType: String,   // e.g. "APP_SWITCH", "TITLE_CHANGE", "BROWSER_OCR" — indexed for fast behavioral queries
     val sensorId: String,      // The ID of the sensor that emitted this event
+    val sessionId: String,     // The ID of the session this event belongs to
     val payload: SensorPayload
 )

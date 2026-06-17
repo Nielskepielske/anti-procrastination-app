@@ -38,6 +38,9 @@ As a secondary parallel processing routine, the original `SensorPayload` and tim
 Once the payload acquires a category, the pipeline wraps it into a final `ProcessedEvent(timestamp, payload, category)` and broadcasts it via `_processedEvents.emit(processedEvent)`.
 
 The pipeline pushes this onto a `SharedFlow`, functioning as a radio broadcast. Multiple consumers can "tune in" to this flow independently:
-*   **`FocusTimerEngine`**: Evaluates `DISTRACTING` streams against the focus threshold.
+*   **`FocusTimerEngine`**: Evaluates `DISTRACTING` streams against the focus threshold and maintains an escalating aggression score.
 *   **`DashboardViewModel`**: Renders the current Category and app title dynamically to the UI.
 *   **(Future) `AnalyticsAccumulator`**: Summarizes the spans into continuous blocks of productive/distracted time in the DB.
+
+### 4.1 Internal Feedback Loop (SystemIntervention)
+Some consumers, such as the `InterventionManager`, may also act as producers. When the `FocusTimerEngine` triggers an intervention, the `InterventionManager` emits a `SystemIntervention` payload back into the `EventPipeline`. This ensures interventions are timestamped, broadcast to the UI, and logged in the database just like any physical sensor event.

@@ -1,6 +1,7 @@
 package com.example.procrastination_detection.ui.analytics.strategy
 
 import com.example.procrastination_detection.domain.model.analytics.ChartData
+import com.example.procrastination_detection.domain.model.analytics.TimeRange
 import kotlin.reflect.KClass
 
 interface DashboardDataStrategy {
@@ -25,6 +26,13 @@ interface DashboardDataStrategy {
     /** Fetches the data from the repository and formats it into the agnostic ChartData.
      * Returns null if there's no data for this period.
      * @param sensorId If non-null, only data from this sensor is considered.
+     * @param sessionId If non-null, only data from this session is considered.
      */
-    suspend fun generateChartData(startTime: Long, endTime: Long, sensorId: String? = null): ChartData?
+    suspend fun generateChartData(
+        startTime: Long,
+        endTime: Long,
+        timeRange: TimeRange,
+        sensorId: String? = null,
+        sessionId: String? = null
+    ): ChartData?
 }

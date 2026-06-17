@@ -3,6 +3,7 @@ package com.example.procrastination_detection.ui.analytics.strategy
 import com.example.procrastination_detection.domain.event.SensorPayload
 import com.example.procrastination_detection.domain.event.Timestamped
 import com.example.procrastination_detection.domain.model.analytics.ChartData
+import com.example.procrastination_detection.domain.model.analytics.TimeRange
 import com.example.procrastination_detection.domain.pipeline.resampling.SwitchCountReducer
 import com.example.procrastination_detection.domain.pipeline.resampling.TimeSeriesResampler
 import com.example.procrastination_detection.domain.repository.OptimizedDataResult
@@ -22,8 +23,14 @@ class SwitchFrequencyStrategy(
     override val chartType: KClass<out ChartData> = ChartData.Line::class
     override val compatibleEventTypes: Set<String> = setOf("APP_SWITCH")
 
-    override suspend fun generateChartData(startTime: Long, endTime: Long, sensorId: String?): ChartData.Line? {
-        val result = repository.getOptimizedEventsForRange(startTime, endTime, sensorId)
+    override suspend fun generateChartData(
+        startTime: Long,
+        endTime: Long,
+        timeRange: TimeRange,
+        sensorId: String?,
+        sessionId: String?
+    ): ChartData.Line? {
+        val result = repository.getOptimizedEventsForRange(startTime, endTime, sensorId, sessionId)
 
         // 1. Extract and filter only the AppSwitches, keeping them wrapped in Timestamped
         val timestampedSwitches = (result as? OptimizedDataResult.Raw)?.data
@@ -32,8 +39,11 @@ class SwitchFrequencyStrategy(
                 if (payload != null) Timestamped(it.timestamp, payload) else null
             } ?: return null
 
-        val duration = endTime - startTime
-        val bucketSize = if (duration <= 3_600_000L) 60_000L else 3_600_000L
+        val bucketSize = when (timeRange) {
+            TimeRange.HOURLY -> 60_000L      // 1 minute
+            TimeRange.DAILY -> 3_600_000L    // 1 hour
+            TimeRange.WEEKLY -> 86_400_000L  // 1 day
+        }
 
         // 2. Bucket the data! We now have access to the timestamp!
         val buckets = TimeSeriesResampler.bucketData(
@@ -68,7 +78,8 @@ class SwitchFrequencyStrategy(
                 )
             ),
             maxPoint = points.maxOrNull()?.coerceAtLeast(5f) ?: 5f,
-            xCategories = labels
+            xCategories = labels,
+            valueSuffix = "sw"
         )
     }
     private fun formatBucketTimestamp(timestamp: Long, totalDurationMillis: Long): String {

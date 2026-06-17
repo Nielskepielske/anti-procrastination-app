@@ -1,5 +1,3 @@
-package com.example.procrastination_detection.helpers
-
 // jvmMain
 import net.sourceforge.tess4j.Tesseract
 import net.sourceforge.tess4j.util.LoadLibs
@@ -113,11 +111,11 @@ actual class LocalUrlExtractor {
             host.split(".").any { segment ->
                 val segLower = segment.lowercase()
                 segLower.length >= 4 && (
-                    // Direct segment match: "github" in title
-                    titleLower.contains(segLower) ||
-                    // 5-char prefix match: "youtu" from "youtu.be" matches "youtube" in title
-                    (segLower.length >= 5 && titleLower.contains(segLower.take(5)))
-                )
+                        // Direct segment match: "github" in title
+                        titleLower.contains(segLower) ||
+                                // 5-char prefix match: "youtu" from "youtu.be" matches "youtube" in title
+                                (segLower.length >= 5 && titleLower.contains(segLower.take(5)))
+                        )
             }
         }
     }

@@ -11,30 +11,55 @@ class SensorManager(
     private val _isTracking = MutableStateFlow(false)
     val isTrackingFlow : StateFlow<Boolean> = _isTracking.asStateFlow()
 
+    private val _activeSensors = MutableStateFlow<List<SensorType>>(emptyList())
+    val activeSensorsFlow: StateFlow<List<SensorType>> = _activeSensors.asStateFlow()
+
     /** Expose the sensors so the UI can build the toggle list. */
     val sensors: List<BehaviorSensor> get() = availableSensors
 
+    private var currentProfile: FocusProfile? = null
+
     fun applyProfile(profile: FocusProfile) {
-        // 1. First, stop everything to reset the state
-        availableSensors.forEach { it.stop() }
+        currentProfile = profile
+        
+        if (_isTracking.value) {
+            // 1. First, stop everything to reset the state
+            availableSensors.forEach { it.stop() }
 
-        // 2. Look at what the profile actually wants
-        // Example: profile.requiredSensorIds = ["WINDOW_TRACKER"]
-        // (It left out "MOUSE_TRACKER")
+            // 2. Look at what the profile actually wants
+            val sensorsToStart = availableSensors.filter { sensor ->
+                profile.requiredSensorIds.contains(sensor.type.name)
+            }
 
-        val sensorsToStart = availableSensors.filter { sensor ->
-            profile.requiredSensorIds.contains(sensor.id)
+            // 3. Only start the requested ones!
+            sensorsToStart.forEach { it.start() }
+            _activeSensors.value = sensorsToStart.map { it.type }
+        } else {
+            _activeSensors.value = emptyList()
         }
-
-        // 3. Only start the requested ones!
-        sensorsToStart.forEach { it.start() }
     }
-    // In the future, this will take a FocusProfile to know exactly which ones to start
+
     fun startAllActiveSensors(){
-        availableSensors.forEach { sensor ->
-            sensor.start()
+        if (_isTracking.value) return
+        
+        val profile = currentProfile
+        val started = if (profile != null) {
+            val sensorsToStart = availableSensors.filter { sensor ->
+                profile.requiredSensorIds.contains(sensor.type.name)
+            }
+            sensorsToStart.forEach { sensor ->
+                sensor.start()
+            }
+            sensorsToStart
+        } else {
+            // Fallback just in case profile isn't loaded
+            availableSensors.forEach { sensor ->
+                sensor.start()
+            }
+            availableSensors
         }
         _isTracking.value = true
+        _activeSensors.value = started.map { it.type }
     }
 
     fun stopAll(){
@@ -42,5 +67,6 @@ class SensorManager(
             sensor.stop()
         }
         _isTracking.value = false
+        _activeSensors.value = emptyList()
     }
 }

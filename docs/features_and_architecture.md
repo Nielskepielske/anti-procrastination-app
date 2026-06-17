@@ -21,8 +21,16 @@ We define a universal `BehaviorSensor` interface in the common layer.
 ### 2. Intervention Logic (`InterventionManager`)
 The logic applies identical principles to user reprimanding. 
 When the `FocusTimerEngine` detects a procrastination threshold breach, it defers action to the `InterventionManager`. 
+*   **Continuous Heat Engine**: The `FocusTimerEngine` uses a state machine to track an `aggressionScore`. Heat builds while distracted and cools down while productive. This prevents users from "cheating" the timer by quickly switching apps.
 *   **Injection**: `InterventionManager` aggregates all injected `InterventionStrategy` tools (e.g., `LinuxNotificationStrategy`, `DynamicFadingStrategy`).
-*   **Firing**: Based on user `FocusProfile` directives, it triggers the appropriate negative enforcement routines securely. 
+*   **Firing**: Based on user `FocusProfile` directives, it triggers the appropriate negative enforcement routines securely.
+*   **Auditing**: When triggered, it emits a `SystemIntervention` back into the `EventPipeline` so it can be logged and plotted on analytics charts.
+
+### 3. Session Management (`SessionManager` & `CsvExportEngine`)
+Rather than tracking indefinitely and polluting the SQLite database with gigabytes of raw events, tracking is encapsulated in discrete sessions.
+*   **State Machine**: Sessions can be started, paused, resumed, and stopped. When paused, the underlying sensors are halted but the session ID remains active.
+*   **Orphan Handling**: If the app crashes, the active session is marked "orphaned" upon next boot. The UI blocks interactions until the user decides to resume or finish the crashed session, ensuring continuous, unbroken data when necessary.
+*   **Archiving**: When a session completes, the `CsvExportEngine` compresses the raw JSON payload records into a CSV file and deletes them from the active SQLite database, guaranteeing O(1) performance for live tracking regardless of historical data depth.
 
 ---
 

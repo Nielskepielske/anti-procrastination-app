@@ -16,6 +16,8 @@ import com.example.procrastination_detection.data.local.entity.HourlySensorEvent
 import com.example.procrastination_detection.data.local.entity.InboxEntity
 import com.example.procrastination_detection.data.local.entity.RuleEntity
 import com.example.procrastination_detection.data.local.entity.SensorEventEntity
+import com.example.procrastination_detection.data.local.entity.SessionEntity
+import com.example.procrastination_detection.data.local.dao.SessionDao
 
 @Database(
     entities = [
@@ -25,9 +27,10 @@ import com.example.procrastination_detection.data.local.entity.SensorEventEntity
         RuleEntity::class,
         AppUsageEntity::class,
         InboxEntity::class,
-        FocusProfileEntity::class
+        FocusProfileEntity::class,
+        SessionEntity::class
     ],
-    version = 8 // Bumped from 7 to 8 due to composite primary keys in TieredSensorEntities
+    version = 9 // Bumped for Session architecture
 )
 @TypeConverters(PayloadConverter::class)
 abstract class AppDatabase : RoomDatabase() {
@@ -37,4 +40,5 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun appUsageDao(): AppUsageDao
     abstract fun inboxDao(): InboxDao
     abstract fun focusProfileDao(): FocusProfileDao
+    abstract fun sessionDao(): SessionDao
 }

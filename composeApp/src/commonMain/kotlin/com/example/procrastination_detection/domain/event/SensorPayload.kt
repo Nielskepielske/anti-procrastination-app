@@ -1,6 +1,8 @@
 package com.example.procrastination_detection.domain.event
 
+import com.example.procrastination_detection.domain.model.EscalationLevel
 import com.example.procrastination_detection.domain.model.WindowData
+import com.example.procrastination_detection.domain.sensor.SensorType
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
@@ -53,5 +55,20 @@ sealed class SensorPayload {
     data class KeyboardMetrics(
         val cadenceWpm: Int,
         override val sensorId: String = "unknown_sensor"
+    ) : SensorPayload()
+
+    @Serializable
+    @SerialName("system_intervention")
+    data class SystemIntervention(
+        val strategyId: String,
+        val aggressionLevel: EscalationLevel,
+        override val sensorId: String = SensorType.SYSTEM.name
+    ) : SensorPayload()
+
+    @Serializable
+    @SerialName("aggression_heat")
+    data class AggressionHeat(
+        val score: Int,
+        override val sensorId: String = SensorType.SYSTEM.name
     ) : SensorPayload()
 }

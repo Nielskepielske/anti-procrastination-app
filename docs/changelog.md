@@ -4,6 +4,24 @@ All notable architectural and implementation changes are recorded here, grouped 
 
 ---
 
+## Phase 7 — Interactive Analytics & Intervention Heat Engine (2026-05-31)
+
+**Problem**: The initial analytics dashboard was static, limiting users from exploring deep timelines or comparing different metrics (like mouse distance vs distraction). The Distraction Average metric was flawed because it didn't capture continuous procrastination without discrete events, and interventions were invisible.
+
+**Solution**: Completely rewrote the analytics layer into a modular `FlexibleAnalyticsScreen` supporting zooming, panning, and chart combinations. Replaced the flawed distraction logic with a continuous "Aggression Heat" state machine that persists distraction across events. Connected interventions directly into the event pipeline so they plot onto the charts natively.
+
+| File | Status | Reason |
+|---|---|---|
+| `ui/analytics/FlexibleAnalyticsScreen.kt` | **NEW** | Introduced a modular, drag-and-drop UI allowing users to dynamically add, edit, merge, and split chart blocks. Supports color customization and metric assignment. |
+| `domain/model/analytics/AnalyticsTypes.kt` | **NEW** | Added robust UI-agnostic models (`ChartData.Line`, `ChartData.Bar`, `DashboardBlock`, `CombinedChartBlock`) to support the new flexible system and database serialization. |
+| `domain/pipeline/FocusTimerEngine.kt` | **MODIFIED** | Gutted the simple timer. It now runs a state machine that continuously increments an `aggressionScore` while distracted, escalating intervals as heat rises, and slowly cooling down when returning to productive apps. |
+| `domain/pipeline/resampling/AggressionHeatReducer.kt` | **NEW** | New resampling logic using `maxOf` to capture the peak heat level inside each time bucket instead of averaging. |
+| `ui/analytics/strategy/AggressionHeatStrategy.kt` | **NEW** | Replaces the deleted `DistractionAverageStrategy`. Generates line chart points mapped to the continuous heat engine output. |
+| `domain/event/SensorPayload.kt` | **MODIFIED** | Added `SystemIntervention` and `AggressionHeat` to track exactly when interventions fire and the heat level across the system. |
+| `ui/analytics/components/ChartComponents.kt` | **MODIFIED** | Implemented horizontal scrolling, zoom limits, and dynamic viewports for KoalaPlot charts. Combined Line charts now normalize their data to a 0-100% scale relative to each dataset's peak for accurate visual overlap. |
+
+---
+
 ## Phase 6 — Focus Profiles & Behavioral Analytics (2026-04-16)
 
 **Problem**: The system was hardcoded to a single "distraction vs productive" threshold and lacked a way for users to visualize their behavior over time or choose different enforcement intensities.
@@ -236,3 +254,75 @@ All notable architectural and implementation changes are recorded here, grouped 
 - **Granular Editing**: Users can now change strategies, colors, or remove individual sensors from a combination without deleting the entire block.
 - **Timeline Synchronization**: Fixed the "offset lines" bug by ensuring all sensors in a refresh cycle use the exact same temporal boundaries, aligned to the minute/hour grid.
 - **Dynamic De-combining**: Removing a sensor from a 2-sensor combination now automatically converts the remaining sensor back into a standard `SingleChartBlock`.
+
+---
+
+## Phase 9 — Sensor Architecture Refactor (2026-05-30)
+
+**Problem**: Adding new sensors required writing repetitive coroutine lifecycle management code, and sensor IDs were hardcoded strings, which lacked type safety and were prone to errors.
+
+**Solution**: Refactored the architecture to use a type-safe enum for IDs and introduced an abstract base class that manages polling, lifecycles, and error boundaries for all sensors.
+
+| File | Status | Reason |
+|---|---|---|
+| `domain/sensor/SensorType.kt` | **NEW** | Introduced type-safe enum to replace magic string IDs. |
+| `domain/sensor/BasePollingSensor.kt` | **NEW** | Abstract class that handles coroutine management, `isActive` checking, intervals, and error catching for any polling sensor. |
+| `domain/sensor/BehaviorSensor.kt` | **MODIFIED** | Interface now exposes `val type: SensorType` instead of `val id: String`. |
+| `sensor/LinuxWindowTracker.kt` | **MODIFIED** | Refactored to extend `BasePollingSensor`. Removed all manual coroutine management. |
+| `engine/BrowserAnalyserEngine.kt` | **MODIFIED** | Updated to implement `val type: SensorType`. |
+| `ui/profile/ProfileManagerScreen.kt` | **MODIFIED** | UI bindings updated to map from `SensorType.name`. |
+| `ui/analytics/FlexibleAnalyticsViewModel.kt` | **MODIFIED** | View model updated to dynamically map `SensorType.name`. |
+| `docs/creating_sensors.md` | **NEW** | Added detailed documentation on how to create and inject a new sensor using the new architecture. |
+
+---
+
+## Phase 10 — Mouse Tracking & Analytics Architecture Refactor (2026-05-30)
+
+**Problem**: Adding new analytics visualizations required developers to manually wire them into the `FlexibleAnalyticsViewModel`, breaking the Open-Closed Principle. Additionally, the system lacked physical behavior tracking like mouse movement to correlate with distraction levels.
+
+**Solution**: Completely decoupled the Analytics strategies using Koin's `bind` auto-discovery and implemented a robust Linux Mouse Tracker using `hyprctl`.
+
+| File | Status | Reason |
+|---|---|---|
+| `di/CoreModule.kt` | **MODIFIED** | Refactored strategy registration to use `getAll<DashboardDataStrategy>()`. The `FlexibleAnalyticsViewModel` now instantly discovers and renders new metrics without touching UI code. |
+| `sensor/LinuxMouseTracker.kt` | **NEW** | Implemented `BasePollingSensor` to track physical mouse movement and idle times using `hyprctl cursorpos`. Background telemetry is emitted without disrupting the active application context state. |
+| `domain/pipeline/resampling/MouseDistanceReducer.kt` & `MouseIdleReducer.kt` | **NEW** | Aggregates raw mouse distance and idle seconds into logical time buckets. |
+| `ui/analytics/strategy/MouseDistanceStrategy.kt` & `MouseIdleStrategy.kt` | **NEW** | Provides the dashboard blueprint for plotting mouse activity (px) and inactivity (s) using the new architecture. |
+| `docs/creating_strategies.md` | **NEW** | Added comprehensive developer documentation explaining how to build and register new Reducers and Strategies. |
+| `ui/analytics/components/ChartComponents.kt` | **MODIFIED** | Updated Y-axis rendering to support strategy-provided units (`valueSuffix`) for enhanced chart clarity. |
+
+---
+
+## Phase 11 — Session Management & Data Export (2026-05-31)
+
+**Problem**: All sensor data was stored indefinitely in the local database, leading to bloat and slow queries. There was no way to start/stop discrete tracking sessions, pause sessions, or export data for offline analysis. Orphaned sessions caused by app crashes were not handled gracefully.
+
+**Solution**: Re-architected the tracking system around a discrete `SessionEntity`. Sessions can now be started, paused, and stopped. When a session stops, its raw events are exported to a highly compressed CSV file and removed from the active database to maintain read/write performance.
+
+| File | Status | Reason |
+|---|---|---|
+| `domain/session/SessionManager.kt` | **MODIFIED** | Added `pauseSession()` and `resumeSession()`. Added robust handling for "orphaned" sessions (sessions left active during an unexpected crash) by emitting them via `orphanedSessionFlow` for the UI to resolve. |
+| `domain/pipeline/CsvExportEngine.kt` | **NEW** | Handles the automatic compilation of all `SensorEventEntity` rows for a completed session into a CSV file, saving it, and then purging those raw events from the local SQLite database. |
+| `domain/pipeline/SessionDownloader.kt` | **NEW** | Introduced a cross-platform interface to allow users to export/download the archived CSV files directly to their local filesystem. |
+| `platform/desktop/DesktopSessionDownloader.kt` | **NEW** | Implements `SessionDownloader` for the JVM using the native `java.awt.FileDialog` "Save As" prompt. |
+| `platform/android/AndroidSessionDownloader.kt` | **NEW** | Implements `SessionDownloader` for Android using `MediaStore.Downloads` and `Intent.ACTION_SEND` to write to public directories without complex permissions. |
+| `ui/dashboard/DashboardScreen.kt` | **MODIFIED** | Added a block-screen modal for resolving Orphaned sessions (Resume or Finish). Added Start/Pause/Stop tracking controls with warning dialogs explaining that stopping a session will archive its data. |
+| `ui/analytics/FlexibleAnalyticsScreen.kt` | **MODIFIED** | Updated the "Analytics Scope" dropdown to allow selecting specific archived sessions (formatted nicely with their date/time ranges) instead of just "All Data". Added a native "Download" icon next to the dropdown to trigger the `SessionDownloader`. |
+| `domain/model/FocusProfile.kt` | **MODIFIED** | Added `csvGranularity` (e.g. `PerSecond`, `PerMinute`, `PerHour`) to allow the user to control the resolution of the archived data based on their profile. |
+
+---
+
+## Phase 12 — Continuous Heat Escalation & Intervention Plotting (2026-05-31)
+
+**Problem**: The `FocusTimerEngine` previously ran on a simplistic static loop. When a user was distracted, it waited a fixed threshold, fired an intervention, and reset. If a user quickly switched to a productive app for one second and then back to a distracting app, the timer reset completely, enabling "timer cheating." Additionally, users had no way to visually track when interventions fired relative to their metrics (e.g. "Did this notification actually cause me to stop using the mouse?").
+
+**Solution**: Rebuilt the `FocusTimerEngine` into a state machine that tracks an `aggressionScore` ("heat"). Heat builds while distracted and cools down while productive. Interventions speed up as heat rises. Overlays were added to the analytics charts to plot these interventions natively.
+
+| File | Status | Reason |
+|---|---|---|
+| `domain/pipeline/FocusTimerEngine.kt` | **REPLACED** | Re-engineered the core loop. Introduced `aggressionScore`. Delay times are now dynamically calculated: GENTLE uses 100% threshold, FIRM uses 50%, AGGRESSIVE uses 25%. Productive state now initiates a cooldown loop instead of an instant reset. |
+| `domain/intervention/InterventionManager.kt` | **MODIFIED** | Now emits `SensorPayload.SystemIntervention` events into the `EventPipeline` whenever a strategy is triggered, providing an auditable trail of user reprimands. |
+| `domain/event/SensorPayload.kt` | **MODIFIED** | Added `SystemIntervention(escalationLevel, strategyName)` data class. |
+| `ui/analytics/strategy/SystemInterventionStrategy.kt` | **NEW** | Added a new dashboard strategy to plot interventions. |
+| `ui/analytics/components/ChartComponents.kt` | **MODIFIED** | Added `Visibility` icon toggles to LineCharts. Line charts now natively plot vertical indicator lines using `KoalaPlot`'s `LinePlot2` to show exact intervention moments across the synchronized timeline. |
+| `ui/analytics/FlexibleAnalyticsViewModel.kt` | **MODIFIED** | Correlates and loads `SystemIntervention` overlay data asynchronously when combined blocks are rendered. |
